@@ -2,7 +2,17 @@ var web3 = new Web3(Web3.givenProvider);
 var contractInstance;
 var activeAccount;
 
-var contractAddress = "0xE3A5c8c8bC169e5A82291ec53d9D1DcA909457F7";
+var contractAddress = "0x64f36aa8d0899913738314Bea50ae4aA2c3E8F2E";
+
+// Is there is an injected web3 instance?
+if (typeof web3 !== 'undefined') {
+  //App.web3Provider = web3.currentProvider;
+  web3 = new Web3(web3.currentProvider);
+} else {
+  // If no injected web3 instance is detected, fallback to Ganache.
+  //App.web3Provider = new web3.providers.HttpProvider('http://127.0.0.1:7545');
+  web3 = new Web3(App.web3Provider);
+}
 
 $(document).ready(function() {
     window.ethereum.enable().then(async function(accounts){
@@ -108,7 +118,7 @@ async function placeBet(betChoice) {
 async function flipNow(){
       console.log("... Calling Flip Contract..");
 
-      result = await contractInstance.methods.FlipNPayOut(activeAccount).call({from: activeAccount, gas: 100000})
+      await contractInstance.methods.FlipNPayOut(activeAccount).call({from: contractAddress, gas: 100000})
 
             .on('transactionHash', function(hash){
               console.log("tx hash :",hash);
@@ -120,7 +130,7 @@ async function flipNow(){
               console.log("receipt: ",receipt);
             })
 
-      console.log("Bet result:",result)
+      //console.log("Bet result:",result)
 
       await displayAccountInfo()
 
