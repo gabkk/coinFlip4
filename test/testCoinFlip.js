@@ -34,7 +34,7 @@ contract("CoinFlip", async function(accounts){
 
     console.log("Creating top Up ..")
 
-    await instance.topUp({value: 1000000, from: accounts[0]});
+    await instance.topUp({value: 100000000000, from: accounts[0]});
 
     let CoinFlipBalance_after = parseFloat( await web3.eth.getBalance(CoinFlip.address))
     let InstanceContractBalance_after = parseFloat(await web3.eth.getBalance(instance.address))
@@ -44,26 +44,30 @@ contract("CoinFlip", async function(accounts){
     console.log("contract Balance after top UP = ",InstanceContractBalance_after);
     console.log("instance Balance after top UP = ",instanceBalance_after);
 
+    let playerDetails = await instance.playerReport(accounts[0],{from: accounts[0]});
+    console.log( "playerDetails", playerDetails)
+
     assert(InstanceContractBalance_after == instanceBalance_after, "Balance of instance and balance of Network address not match");
     assert(InstanceContractBalance_after > InstanceContractBalance_before, "Balance of instance not insreased")
   });
 
   it("should accept new bet", async function() {
-    instance = await CoinFlip.new();
+
     let betChoice = 1;
     let betAmount = 5000000;
     await instance.createBet( betChoice ,
       {value: betAmount, from: accounts[0]});
-
     let betted = await instance.getMyBet({from: accounts[0]});
     console.log("Betted for :",betted[0] );
     console.log("Betted Amount :",betted[1]);
-    assert(betted[0] == betChoice);
-    assert(betted[1] == betAmount)
-  })
+    assert(betted[0] == betChoice, "wrong Bet choice filled");
+    assert(betted[1] == betAmount, "Wrong bet amount filled")
+  });
 
+/*
   it("should payOut and reset",async function() {
-
+    playerDetails = await instance.playerReport(accounts[0]);
+    console.log( "playerDetails", playerDetails)
     CoinFlipBalance_before =parseFloat( await web3.eth.getBalance(CoinFlip.address))
     InstanceContractBalance_before =parseFloat( await web3.eth.getBalance(instance.address))
     instanceBalance_before = parseFloat(await instance.balance()) //balance is a function of CoinFlip contract
@@ -78,7 +82,7 @@ contract("CoinFlip", async function(accounts){
     console.log("Before Pay Out: Betted for :",betted[0] );
     console.log("Before Pay Out: Betted Amount :",betted[1]);
 
-    let result = await instance.FlipNPayOut(accounts[0],{from: accounts[0]});
+    //Here should test PayOut
 
     CoinFlipBalance_after = parseFloat( await web3.eth.getBalance(CoinFlip.address))
     InstanceContractBalance_after = parseFloat( await web3.eth.getBalance(instance.address))
@@ -96,6 +100,7 @@ contract("CoinFlip", async function(accounts){
     assert(betted[0] == 0);
     assert(betted[1] == 0);
   })
+*/
 
 /*
   it("should not create person without payment", async function() {

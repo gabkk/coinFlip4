@@ -8,13 +8,15 @@ contract CoinFlip is Ownable{
     // status of active bets; Each player can have multiple bets before each flip
     //Update each time player submited new bet
 
-    struct activeBet {
+    struct activeBet  {
         uint[] betListPrecdictions;  // 0 or 1
         uint[] betListAmount; //wei
         }
 
     //list of all activities of a player (update after finished solving each bet)
     struct betHistory {
+        uint totalBalance;
+        uint totalTopUp;
         uint totalSpentAmount;
         uint totalWinAmount;
         uint totalGames;
@@ -28,10 +30,10 @@ contract CoinFlip is Ownable{
 
     //playerList store information
     // Should limit storage size somehow to avoid everflow in future?
-    mapping (address => betHistory) private playerHistory;
+    mapping (address => betHistory) public playerHistory;
 
     //newBetCreated emit when created and not finished
-    event newBetCreated(uint betChoice, uint betAmount);
+    event newBetCreated(uint betChoice, uint betAmount, address playerAddress);
 
     //betFinished emit when
     event betFinished(uint betAmount, uint winAmount, uint result);
@@ -45,27 +47,46 @@ contract CoinFlip is Ownable{
 
     function topUp() public payable {
         _contractBalance_ += msg.value;
+        playerHistory[msg.sender].totalTopUp += msg.value;
+        updatePlayerBalance(msg.sender);
     }
 
     function balance() public view returns (uint) {
       return _contractBalance_;
     }
 
+    function playerReport(address playerAddress) public view returns(uint,uint,uint,uint,uint,uint,uint) {
+        require(playerHistory[playerAddress].totalBalance ==
+            playerHistory[playerAddress].totalTopUp - playerHistory[playerAddress].totalSpentAmount + playerHistory[playerAddress].totalWinAmount,
+            "ERROR CALCULATING PLAYER BALLANCE");
+        return  (   playerHistory[playerAddress].totalBalance,
+                    playerHistory[playerAddress].totalTopUp,
+                    playerHistory[playerAddress].totalSpentAmount,
+                    playerHistory[playerAddress].totalWinAmount,
+                    playerHistory[playerAddress].totalGames,
+                    playerHistory[playerAddress].totalWins,
+                    playerHistory[playerAddress].lastWinAmount );
+    }
+
     function createBet(uint betChoice) public payable higherMin() {
+        require(_contractBalance_ >= msg.value , "TOO BIG BET, NOT ENOUGH BALANCE ON CONTRACT");
+        createBetForPlayer(betChoice, msg.value, msg.sender);
+    }
+
+    function createBetForPlayer(uint betChoice, uint betAmount, address playerAddress) public payable higherMin() {
         require(betChoice == 1 || betChoice == 0, "Bet should be 1 or 0");
-        _contractBalance_ += msg.value;
 
-        insertNewBet(betChoice);
+        insertNewBetForPlayer(betChoice, betAmount, playerAddress);
 
-        uint totalActivePredicts = playerActiveBetList[msg.sender].betListPrecdictions.length;
-        uint  totalActiveBets = playerActiveBetList[msg.sender].betListAmount.length;
+        uint totalActivePredicts = playerActiveBetList[playerAddress].betListPrecdictions.length;
+        uint  totalActiveBets = playerActiveBetList[playerAddress].betListAmount.length;
 
         assert(totalActivePredicts == totalActiveBets);
         assert(
             keccak256(
                 abi.encodePacked(
-                    playerActiveBetList[msg.sender].betListPrecdictions[totalActivePredicts - 1],
-                    playerActiveBetList[msg.sender].betListAmount[totalActiveBets - 1]
+                    playerActiveBetList[playerAddress].betListPrecdictions[totalActivePredicts - 1],
+                    playerActiveBetList[playerAddress].betListAmount[totalActiveBets - 1]
                 )
             )
             ==
@@ -77,21 +98,40 @@ contract CoinFlip is Ownable{
             )
         );
 
-        emit newBetCreated(betChoice, msg.value);
-        //checkPayOut(newPlayersBet)
+        emit newBetCreated(betChoice, betAmount, playerAddress);
+        //checktossCoin(newPlayersBet)
     }
 
-    function insertNewBet(uint betChoice) private {
-        require(playerActiveBetList[msg.sender].betListPrecdictions.length < 10, "Too many bets for one draw; Please hit FLIP button!");
-        playerActiveBetList[msg.sender].betListPrecdictions.push(betChoice);
-        playerActiveBetList[msg.sender].betListAmount.push(msg.value);
+    function updatePlayerBalance(address playerAddress) private {
+        playerHistory[playerAddress].totalBalance =
+        playerHistory[playerAddress].totalTopUp -  playerHistory[playerAddress].totalSpentAmount +  playerHistory[playerAddress].totalWinAmount;
+    }
+
+    function insertNewBetForPlayer(uint betChoice, uint betAmount, address playerAddress) private {
+        require(playerHistory[playerAddress].totalBalance ==
+            playerHistory[playerAddress].totalTopUp - playerHistory[playerAddress].totalSpentAmount + playerHistory[playerAddress].totalWinAmount,
+            "ERROR CALCULATING PLAYER BALLANCE");
+        require(playerActiveBetList[playerAddress].betListPrecdictions.length < 1, "Too many bets for one draw; Please hit FLIP button!");
+        require(playerActiveBetList[playerAddress].betListAmount.length < 1, "Too many bets for one draw; Please hit FLIP button!");
+        require(playerHistory[playerAddress].totalBalance >= betAmount, "Too big Bet, please top Up more coins..");
+
+        playerHistory[playerAddress].totalSpentAmount += betAmount;
+        updatePlayerBalance(playerAddress);
+
+        playerActiveBetList[playerAddress].betListPrecdictions.push(betChoice);
+        playerActiveBetList[playerAddress].betListAmount.push(betAmount);
     }
 
     function getMyBet() public view returns(uint[] memory, uint[] memory)
     {
+        return getPlayerBet(msg.sender);
+    }
+
+    function getPlayerBet(address playerAddress) public view returns(uint[] memory, uint[] memory)
+    {
         return (
-            playerActiveBetList[msg.sender].betListPrecdictions,
-            playerActiveBetList[msg.sender].betListAmount
+            playerActiveBetList[playerAddress].betListPrecdictions,
+            playerActiveBetList[playerAddress].betListAmount
         );
     }
 
@@ -125,17 +165,24 @@ contract CoinFlip is Ownable{
         playerActiveBetList[msg.sender] = noBets;
     }
 
-    function payOut() public {
-      FlipNPayOut(msg.sender);
+    function tossCoin() public {
+      playerTossCoin(msg.sender);
     }
 
-    function FlipNPayOut(address payable playerAddress) public returns(uint , uint, uint) {
+    function playerTossCoin(address payable playerAddress) public returns(uint , uint, uint) {
         uint result = random();
         uint spentAmount = 0;
         uint winAmount = 0;
 
+        require(    result == 1 || result==0);
         require(    playerActiveBetList[playerAddress].betListPrecdictions.length > 0,
                     "No bet placed, plase place the bet!");
+
+        require(    playerActiveBetList[playerAddress].betListAmount.length > 0,
+                    "No bet placed, plase place the bet!");
+
+        require(    playerActiveBetList[playerAddress].betListAmount.length == playerActiveBetList[playerAddress].betListPrecdictions.length,
+                    "Error bet data");
 
         for (uint x=0; x < playerActiveBetList[playerAddress].betListPrecdictions.length; x++) {
             spentAmount += playerActiveBetList[playerAddress].betListAmount[x];
@@ -149,9 +196,9 @@ contract CoinFlip is Ownable{
         resetPlayerBetList();
 
         if (winAmount>0) {
-            _contractBalance_ -= winAmount;
-            playerAddress.send(winAmount); //Should change WIn rate later..
-        }
+            playerHistory[playerAddress].totalWinAmount += winAmount;
+            updatePlayerBalance(playerAddress);
+            }
 
         emit betFinished(spentAmount, winAmount, result);
         return (spentAmount, winAmount, result);
