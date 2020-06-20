@@ -1,4 +1,4 @@
-var abi =   [
+var abi = [
   {
     "anonymous": false,
     "inputs": [
@@ -241,8 +241,8 @@ var abi =   [
     ],
     "name": "createBetForPlayer",
     "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

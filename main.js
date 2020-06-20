@@ -2,7 +2,7 @@ var web3 = new Web3(Web3.givenProvider);
 var contractInstance;
 var playerAddress;
 
-var contractAddress = "0x3FdC296E7622e548d130fe0ac2531A1899430B58";
+var contractAddress = "0xF5DCFc17A8e5FF79F4a76C1f1a5Ae66769249F10";
 
 // Is there is an injected web3 instance?
 if (typeof web3 !== 'undefined') {
@@ -24,6 +24,8 @@ $(document).ready(function() {
       let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
       console.log(playerBalanceNow)
       displayPlayerBalanceInfo(playerBalanceNow)
+
+
     });
     $("#place_bet1_button").click(placeBet1);
     $("#place_bet0_button").click(placeBet0);
@@ -108,25 +110,23 @@ function placeBet0() {
 
 async function placeBet(betChoice) {
 
+  if (parseInt(betAmount) <= 0) {
+      alert("Not valid coin amount!");
+      return;
+    }
+
   console.log("Place Bet ",betChoice,": button clicked...")
   var betAmount = $("#betAmount_input").val();
   console.log("type of betAmount:",typeof(betAmount))
   console.log("Before fetchAccountInfo playerAddress = ",playerAddress)
   await fetchAccountInfo()
   console.log("After fetchAccountInfo playerAddress = ",playerAddress)
-
-  if (parseFloat(betAmount) <= 0.001) {
-    alert("Not valid coin amount!");
-    return;
-  }
-
   console.log("Calling Create Bet:",typeof(betChoice),betChoice)
 
-  //Should check here if player balance is enough and deduct balance before creating bet
-  //...
   await contractInstance.methods
     .createBetForPlayer(betChoice, betAmount, playerAddress)
-    .send({gas:100000})
+    .call()
+    /*
     .on('transactionHash', function(hash){
       console.log("tx hash :",hash);
     })
@@ -136,6 +136,7 @@ async function placeBet(betChoice) {
     .on('receipt', function(receipt){
       console.log("receipt: ",receipt);
     })
+    */
 
   await fetchAccountInfo()
 

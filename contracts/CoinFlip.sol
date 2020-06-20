@@ -40,11 +40,6 @@ contract CoinFlip is Ownable{
 
     uint _minBetAmount = 1000;
 
-    modifier higherMin(){
-        require(msg.value >= _minBetAmount);
-        _;
-    }
-
     function topUp() public payable {
         _contractBalance_ += msg.value;
         playerHistory[msg.sender].totalTopUp += msg.value;
@@ -68,12 +63,14 @@ contract CoinFlip is Ownable{
                     playerHistory[playerAddress].lastWinAmount );
     }
 
-    function createBet(uint betChoice) public payable higherMin() {
+    function createBet(uint betChoice) public payable {
+        require(msg.value >= _minBetAmount);
         require(_contractBalance_ >= msg.value , "TOO BIG BET, NOT ENOUGH BALANCE ON CONTRACT");
         createBetForPlayer(betChoice, msg.value, msg.sender);
     }
 
-    function createBetForPlayer(uint betChoice, uint betAmount, address playerAddress) public payable higherMin() {
+    function createBetForPlayer(uint betChoice, uint betAmount, address playerAddress) public {
+        require(betAmount >= _minBetAmount);
         require(betChoice == 1 || betChoice == 0, "Bet should be 1 or 0");
 
         insertNewBetForPlayer(betChoice, betAmount, playerAddress);
@@ -93,13 +90,12 @@ contract CoinFlip is Ownable{
             keccak256(
                 abi.encodePacked(
                     betChoice,
-                    msg.value
+                    betAmount
                 )
             )
         );
 
         emit newBetCreated(betChoice, betAmount, playerAddress);
-        //checktossCoin(newPlayersBet)
     }
 
     function updatePlayerBalance(address playerAddress) private {
@@ -111,8 +107,8 @@ contract CoinFlip is Ownable{
         require(playerHistory[playerAddress].totalBalance ==
             playerHistory[playerAddress].totalTopUp - playerHistory[playerAddress].totalSpentAmount + playerHistory[playerAddress].totalWinAmount,
             "ERROR CALCULATING PLAYER BALLANCE");
-        require(playerActiveBetList[playerAddress].betListPrecdictions.length < 1, "Too many bets for one draw; Please hit FLIP button!");
-        require(playerActiveBetList[playerAddress].betListAmount.length < 1, "Too many bets for one draw; Please hit FLIP button!");
+        require(playerActiveBetList[playerAddress].betListPrecdictions.length < 3, "Too many bets for one draw; Please hit FLIP button!");
+        require(playerActiveBetList[playerAddress].betListAmount.length < 3, "Too many bets for one draw; Please hit FLIP button!");
         require(playerHistory[playerAddress].totalBalance >= betAmount, "Too big Bet, please top Up more coins..");
 
         playerHistory[playerAddress].totalSpentAmount += betAmount;

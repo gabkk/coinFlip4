@@ -58,11 +58,24 @@ contract("CoinFlip", async function(accounts){
     await instance.createBet( betChoice ,
       {value: betAmount, from: accounts[0]});
     let betted = await instance.getMyBet({from: accounts[0]});
-    console.log("Betted for :",betted[0] );
-    console.log("Betted Amount :",betted[1]);
+    console.log("Betted for :",betted[0]," Should be:", betChoice);
+    console.log("Betted Amount :",betted[1]," Should be:", betAmount);
     assert(betted[0] == betChoice, "wrong Bet choice filled");
     assert(betted[1] == betAmount, "Wrong bet amount filled")
   });
+
+  it("should accept new bet for player at address..", async function() {
+    let betChoice = 1;
+    let betAmount = 5000000;
+    await instance.createBetForPlayer( betChoice , betAmount, accounts[0],
+      {from: accounts[0]});
+    let betted = await instance.getMyBet({from: accounts[0]});
+    console.log("Betted for :",betted[0]," Should be:", betChoice);
+    console.log("Betted Amount :",betted[1]," Should be:", betAmount);
+    assert(betted[0][1] == betChoice, "wrong Bet choice filled");
+    assert(betted[1][1] == betAmount, "Wrong bet amount filled");
+  });
+
 
 /*
   it("should payOut and reset",async function() {
