@@ -2,7 +2,7 @@ var web3 = new Web3(Web3.givenProvider);
 var contractInstance;
 var playerAddress;
 
-var contractAddress = "0xF5DCFc17A8e5FF79F4a76C1f1a5Ae66769249F10";
+var contractAddress = "0x35f2384FC9ccA11c924Fb7157eF90Bfd7d5a65AD";
 
 // Is there is an injected web3 instance?
 if (typeof web3 !== 'undefined') {
@@ -24,8 +24,6 @@ $(document).ready(function() {
       let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
       console.log(playerBalanceNow)
       displayPlayerBalanceInfo(playerBalanceNow)
-
-
     });
     $("#place_bet1_button").click(placeBet1);
     $("#place_bet0_button").click(placeBet0);
@@ -60,15 +58,6 @@ async function topUpNow() {
     let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
     console.log(playerBalanceNow)
     displayPlayerBalanceInfo(playerBalanceNow)
-    /*
-    playerHistory[playerAddress].totalBalance,
-                playerHistory[playerAddress].totalTopUp,
-                playerHistory[playerAddress].totalSpentAmount,
-                playerHistory[playerAddress].totalWinAmount,
-                playerHistory[playerAddress].totalGames,
-                playerHistory[playerAddress].totalWins,
-                playerHistory[playerAddress].lastWinAmount
-    */
 };
 
 function displayPlayerBalanceInfo(playerBalanceNow) {
@@ -82,6 +71,8 @@ function displayPlayerBalanceInfo(playerBalanceNow) {
   };
 
 async function fetchAccountInfo () {
+    console.log("* * * fetchAccountInfo * * *")
+    console.log("Before fetchAccountInfo playerAddress = ",playerAddress)
     let accounts = await window.web3.eth.getAccounts();
     playerAddress = accounts[0];
 
@@ -98,6 +89,7 @@ async function fetchAccountInfo () {
 
     console.log('#Contract_address', contractAddress)
     $('#Contract_address').text(contractAddress);
+    console.log("After fetchAccountInfo playerAddress = ",playerAddress)
 }
 
 function placeBet1() {
@@ -109,23 +101,22 @@ function placeBet0() {
 }
 
 async function placeBet(betChoice) {
+  var betAmountEth = $("#betAmount_input").val();
+  betAmount = parseInt(window.web3.utils.toWei(betAmountEth, "ether"));
 
-  if (parseInt(betAmount) <= 0) {
-      alert("Not valid coin amount!");
-      return;
-    }
+  if (betAmount <= 1000) {
+        alert("Not valid coin amount!");
+        return;
+      }
 
-  console.log("Place Bet ",betChoice,": button clicked...")
-  var betAmount = $("#betAmount_input").val();
-  console.log("type of betAmount:",typeof(betAmount))
-  console.log("Before fetchAccountInfo playerAddress = ",playerAddress)
   await fetchAccountInfo()
-  console.log("After fetchAccountInfo playerAddress = ",playerAddress)
-  console.log("Calling Create Bet:",typeof(betChoice),betChoice)
+
+  console.log("Button clicked -> Place Bet ",typeof(betChoice),betChoice)
+  console.log("BetAmount:",typeof(betAmount),betAmount)
 
   await contractInstance.methods
     .createBetForPlayer(betChoice, betAmount, playerAddress)
-    .call()
+    .call({gas:100000, from: contractAddress})
     /*
     .on('transactionHash', function(hash){
       console.log("tx hash :",hash);

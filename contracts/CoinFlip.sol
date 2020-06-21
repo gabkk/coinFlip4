@@ -69,7 +69,7 @@ contract CoinFlip is Ownable{
         createBetForPlayer(betChoice, msg.value, msg.sender);
     }
 
-    function createBetForPlayer(uint betChoice, uint betAmount, address playerAddress) public {
+    function createBetForPlayer(uint betChoice, uint256 betAmount, address playerAddress) public {
         require(betAmount >= _minBetAmount);
         require(betChoice == 1 || betChoice == 0, "Bet should be 1 or 0");
 
