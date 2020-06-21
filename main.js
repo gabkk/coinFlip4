@@ -1,18 +1,10 @@
+
+//web3.setProvider(new Web3.providers.WebsocketProvider('ws://localhost:8546'));
 var web3 = new Web3(Web3.givenProvider);
+
 var contractInstance;
 var playerAddress;
-
-var contractAddress = "0x35f2384FC9ccA11c924Fb7157eF90Bfd7d5a65AD";
-
-// Is there is an injected web3 instance?
-if (typeof web3 !== 'undefined') {
-  //App.web3Provider = web3.currentProvider;
-  web3 = new Web3(web3.currentProvider);
-} else {
-  // If no injected web3 instance is detected, fallback to Ganache.
-  //App.web3Provider = new web3.providers.HttpProvider('http://127.0.0.1:7545');
-  web3 = new Web3(App.web3Provider);
-}
+var contractAddress = "0x125B46ACc66EF576AdF5d54a37A84263C34CE88C";
 
 $(document).ready(function() {
     window.ethereum.enable().then(async function(accounts){
@@ -21,30 +13,33 @@ $(document).ready(function() {
       console.log("contractInstance :",contractInstance);
 
       //get and display Player's balance
-      let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
+      let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:100000});
       console.log(playerBalanceNow)
       displayPlayerBalanceInfo(playerBalanceNow)
     });
     $("#place_bet1_button").click(placeBet1);
     $("#place_bet0_button").click(placeBet0);
     $("#play_button").click(flipNow);
-    $("#topUp_button").click(topUpNow);
+    $("#topUp_button").click(playerTopUp_eth);
+    $("#FundUp_button").click(ownerFundUp_eth);
+    window.ethereum.on('accountsChanged', async function(accounts) {
+      await fetchAccountInfo()
+    });
 });
 
 function weiToEther(balance) {
-    return window.web3.utils.fromWei(balance, "ether") + " ETH"
+    return web3.utils.fromWei(balance, "ether") + " ETH"
 }
 
-async function topUpNow() {
-    var topUpAmount = $("#topUp_input").val();
+async function ownerFundUp_eth() {
+    var fundUpAmount_eth = $("#FundUp_input").val();
 
-    var config = {value: web3.utils.toWei(topUpAmount, "ether"),
-                  gas:100000,
-                  from: playerAddress}; // Should return later for player at the end of game
+    var config = {value: web3.utils.toWei(fundUpAmount_eth, "ether"),
+                  gas:100000, from: playerAddress}; // Should return later for player at the end of game
 
-    console.log("Top Up amount:",typeof(topUpAmount),topUpAmount)
+    console.log("Fund Up amount:",typeof(fundUpAmount_eth),fundUpAmount_eth)
 
-    await contractInstance.methods.topUp().send(config)
+    await contractInstance.methods.ownerFundUp_eth(fundUpAmount_eth).send(config)
       .on('transactionHash', function(hash){
         console.log("tx hash :",hash);
       })
@@ -55,37 +50,64 @@ async function topUpNow() {
         console.log("receipt: ",receipt);
       });
 
-    let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
-    console.log(playerBalanceNow)
-    displayPlayerBalanceInfo(playerBalanceNow)
+    let ContractBalanceNow = await contractInstance.methods.getContractBalance().call({gas:100000});
+    console.log(ContractBalanceNow)
+    await fetchAccountInfo()
+};
+
+async function playerTopUp_eth() {
+    var topUpAmount_eth = $("#topUp_input").val();
+
+    var config = {value: web3.utils.toWei(topUpAmount_eth, "ether"),
+                  gas:100000,
+                  from: playerAddress}; // Should return later for player at the end of game
+
+    console.log("Top Up amount:",typeof(topUpAmount_eth),topUpAmount_eth)
+
+    await contractInstance.methods.playerTopUp_eth(topUpAmount_eth).send(config)
+      .on('transactionHash', function(hash){
+        console.log("tx hash :",hash);
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+          console.log("confirmation Number:",confirmationNumber);
+      })
+      .on('receipt', function(receipt){
+        console.log("receipt: ",receipt);
+      })
+      .then(async function() {
+        let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:100000});
+        console.log("playerBalanceNow =",playerBalanceNow)
+        displayPlayerBalanceInfo(playerBalanceNow)
+      });
 };
 
 function displayPlayerBalanceInfo(playerBalanceNow) {
     $("#Player_totalBalance").text(weiToEther(playerBalanceNow[0]));
     $("#Player_totalTopUp").text(weiToEther(playerBalanceNow[1]));
-    $("#Player_totalSpentAmount").text(weiToEther(playerBalanceNow[2]));
-    $("#Player_totalWinAmount").text(weiToEther(playerBalanceNow[3]));
-    $("#Player_totalGames").text(playerBalanceNow[4]);
-    $("#Player_totalWins").text(playerBalanceNow[5]);
-    $("#Player_lastWinAmount").text(weiToEther(playerBalanceNow[6]));
+    $("#Player_totalWithdrawn").text(weiToEther(playerBalanceNow[2]));
+    $("#Player_totalSpentAmount").text(weiToEther(playerBalanceNow[3]));
+    $("#Player_totalWinAmount").text(weiToEther(playerBalanceNow[4]));
+    $("#Player_totalGames").text(playerBalanceNow[5]);
+    $("#Player_totalWins").text(playerBalanceNow[6]);
+    $("#Player_lastWinAmount").text(weiToEther(playerBalanceNow[7]));
   };
 
 async function fetchAccountInfo () {
     console.log("* * * fetchAccountInfo * * *")
     console.log("Before fetchAccountInfo playerAddress = ",playerAddress)
-    let accounts = await window.web3.eth.getAccounts();
+    let accounts = await web3.eth.getAccounts();
     playerAddress = accounts[0];
 
     $('#Player_address').text(playerAddress);
     console.log("Player Account =",playerAddress)
 
-    let balance = await window.web3.eth.getBalance(playerAddress);
-    console.log("Player Balance =",window.web3.utils.fromWei(balance, "ether") + " ETH")
-    $('#Player_balance').text(window.web3.utils.fromWei(balance, "ether") + " ETH");
+    let balance = await web3.eth.getBalance(playerAddress);
+    console.log("Player Balance =",web3.utils.fromWei(balance, "ether") + " ETH")
+    $('#Player_balance').text(web3.utils.fromWei(balance, "ether") + " ETH");
 
-    let contract_balance = await window.web3.eth.getBalance(contractAddress);
-    console.log('#Contract_balance', window.web3.utils.fromWei(contract_balance, "ether") + " ETH")
-    $('#Contract_balance').text(window.web3.utils.fromWei(contract_balance, "ether") + " ETH");
+    let contract_balance = await web3.eth.getBalance(contractAddress);
+    console.log('#Contract_balance', web3.utils.fromWei(contract_balance, "ether") + " ETH")
+    $('#Contract_balance').text(web3.utils.fromWei(contract_balance, "ether") + " ETH");
 
     console.log('#Contract_address', contractAddress)
     $('#Contract_address').text(contractAddress);
@@ -102,9 +124,7 @@ function placeBet0() {
 
 async function placeBet(betChoice) {
   var betAmountEth = $("#betAmount_input").val();
-  betAmount = parseInt(window.web3.utils.toWei(betAmountEth, "ether"));
-
-  if (betAmount <= 1000) {
+  if (betAmountEth != Math.round(betAmountEth)) {
         alert("Not valid coin amount!");
         return;
       }
@@ -112,10 +132,9 @@ async function placeBet(betChoice) {
   await fetchAccountInfo()
 
   console.log("Button clicked -> Place Bet ",typeof(betChoice),betChoice)
-  console.log("BetAmount:",typeof(betAmount),betAmount)
+  console.log("BetAmount:",typeof(betAmountEth),betAmountEth,"eth")
 
-  await contractInstance.methods
-    .createBetForPlayer(betChoice, betAmount, playerAddress)
+  await contractInstance.methods.createMyBet(betChoice,betAmountEth)
     .call({gas:100000, from: contractAddress})
     /*
     .on('transactionHash', function(hash){
@@ -144,9 +163,9 @@ async function placeBet(betChoice) {
 async function flipNow(){
       console.log("... Calling Flip Contract..");
 
-      result = await contractInstance.methods.playerTossCoin(playerAddress)
+      result = await contractInstance.methods.playerTossCoin()
             //.call({from: contractAddress, gas: 100000})
-            .call()
+            .call({gas:100000})
 
       console.log("Bet result:",result)
 
@@ -175,8 +194,8 @@ function displayBetInfo(betHistory){
     }
   }
   console.log("typeof(betAmount[1]) =",typeof(betAmount[1]))
-  betAmount[1] = window.web3.utils.fromWei(betAmount[1].toString(), "ether")
-  betAmount[0] = window.web3.utils.fromWei(betAmount[0].toString(), "ether")
+  betAmount[1] = web3.utils.fromWei(betAmount[1].toString(), "ether")
+  betAmount[0] = web3.utils.fromWei(betAmount[0].toString(), "ether")
   betAmount[1] = betAmount[1].toString()+" ETH"
   betAmount[0] = betAmount[0].toString()+" ETH"
   console.log("typeof(betAmount[1]) =",typeof(betAmount[1]))

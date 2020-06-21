@@ -1,5 +1,6 @@
+//SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.5.12;
+pragma solidity 0.6.10;
 
 contract Ownable{
   address public owner;

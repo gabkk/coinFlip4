@@ -1,4 +1,4 @@
-var abi =  [
+var abi = [
   {
     "anonymous": false,
     "inputs": [
@@ -50,7 +50,6 @@ var abi =  [
     "type": "event"
   },
   {
-    "constant": true,
     "inputs": [],
     "name": "_contractBalance_",
     "outputs": [
@@ -60,12 +59,11 @@ var abi =  [
         "type": "uint256"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "constant": true
   },
   {
-    "constant": true,
     "inputs": [],
     "name": "owner",
     "outputs": [
@@ -75,12 +73,11 @@ var abi =  [
         "type": "address"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "constant": true
   },
   {
-    "constant": true,
     "inputs": [
       {
         "internalType": "address",
@@ -98,6 +95,11 @@ var abi =  [
       {
         "internalType": "uint256",
         "name": "totalTopUp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalWithdrawn",
         "type": "uint256"
       },
       {
@@ -126,23 +128,90 @@ var abi =  [
         "type": "uint256"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "constant": true
   },
   {
-    "constant": false,
-    "inputs": [],
-    "name": "topUp",
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "topUp_eth",
+        "type": "uint256"
+      }
+    ],
+    "name": "ownerFundUp_eth",
     "outputs": [],
-    "payable": true,
     "stateMutability": "payable",
-    "type": "function"
+    "type": "function",
+    "payable": true
   },
   {
-    "constant": true,
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "topUp_eth",
+        "type": "uint256"
+      }
+    ],
+    "name": "playerTopUp_eth",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function",
+    "payable": true
+  },
+  {
     "inputs": [],
-    "name": "balance",
+    "name": "getPlayerHistory",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [],
+    "name": "getContractBalance",
     "outputs": [
       {
         "internalType": "uint256",
@@ -150,78 +219,25 @@ var abi =  [
         "type": "uint256"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "constant": true
   },
   {
-    "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
-      }
-    ],
-    "name": "playerReport",
+    "inputs": [],
+    "name": "playableFund",
     "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "constant": true
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "betChoice",
-        "type": "uint256"
-      }
-    ],
-    "name": "createBet",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": false,
     "inputs": [
       {
         "internalType": "uint256",
@@ -230,23 +246,16 @@ var abi =  [
       },
       {
         "internalType": "uint256",
-        "name": "betAmount",
+        "name": "betAmount_eth",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
       }
     ],
-    "name": "createBetForPlayer",
+    "name": "createMyBet",
     "outputs": [],
-    "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "constant": true,
     "inputs": [],
     "name": "getMyBet",
     "outputs": [
@@ -261,89 +270,12 @@ var abi =  [
         "type": "uint256[]"
       }
     ],
-    "payable": false,
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "constant": true
   },
   {
-    "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
-      }
-    ],
-    "name": "getPlayerBet",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [],
-    "name": "getMyHistory",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [],
-    "name": "tossCoin",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "internalType": "address payable",
-        "name": "playerAddress",
-        "type": "address"
-      }
-    ],
     "name": "playerTossCoin",
     "outputs": [
       {
@@ -362,7 +294,32 @@ var abi =  [
         "type": "uint256"
       }
     ],
-    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawAll",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "playerWithdrawAll",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   }

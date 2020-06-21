@@ -27,11 +27,19 @@
       <div>
 
       <div>
+                <div class="input-group mb-3">
+                  <input type="text" class="form-control" id="FundUp_input" placeholder="topUpAmount" >
+                  <button type="button" id="FundUp_button" class="btn btn-primary" > Owner Fund Up </button>
+                </div>
+      </div>
+
+      <div>
         <div class="input-group mb-3">
           <input type="text" class="form-control" id="topUp_input" placeholder="topUpAmount" >
-          <button type="button" id="topUp_button" class="btn btn-primary" > Top Up </button>
+          <button type="button" id="topUp_button" class="btn btn-primary" > Player Top Up </button>
         </div>
       </div>
+
       <div>
           <h2>Player's account</h2>
           <div>
@@ -39,6 +47,9 @@
           </div>
           <div>
           Player total topUp: <span id="Player_totalTopUp"></span>
+          </div>
+          <div>
+          Player total withdrawn: <span id="Player_totalWithdrawn"></span>
           </div>
           <div>
           Player total Spent Amount: <span id="Player_totalSpentAmount"></span>
