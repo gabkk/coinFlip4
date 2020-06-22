@@ -6,6 +6,7 @@ pragma solidity 0.6.10;
 contract CoinFlip is Ownable{
 
     uint public _contractBalance_;
+    uint public _totalAllPlayerBalance_;
 
     // status of active bets; Each player can have multiple bets before each flip
     //Update each time player submited new bet
@@ -41,7 +42,11 @@ contract CoinFlip is Ownable{
     //betFinished emit when
     event betFinished(uint betAmount, uint winAmount, uint result);
 
+    //common notice
+    event notice(string noticeString, uint noticeValue);
+
     uint _minBetAmount = 1000; //All Amount are in Wei unless has _eth ending
+    uint _maxBetWaiting = 3; // Maximun number of bets for a player before toss coin
 
     //Check Account Balance validity
     modifier validPlayerBalance() {
@@ -52,9 +57,10 @@ contract CoinFlip is Ownable{
         _;
     }
 
-    function eth2Wei(uint eth) private view returns(uint) {
+    function eth2Wei(uint eth) public pure returns(uint) {
         return eth*1000000000000000000;
     }
+
     //Owner balance topUp
     function ownerFundUp_eth(uint topUp_eth) public onlyOwner payable {
 
@@ -78,11 +84,13 @@ contract CoinFlip is Ownable{
 
     //Calculate values each time player status changed
     function updateMyBalance() private {
+        _totalAllPlayerBalance_ -= playerHistory[msg.sender].totalBalance;
         playerHistory[msg.sender].totalBalance =
         playerHistory[msg.sender].totalTopUp -
         playerHistory[msg.sender].totalWithdrawn -
         playerHistory[msg.sender].totalSpentAmount +
         playerHistory[msg.sender].totalWinAmount;
+        _totalAllPlayerBalance_ += playerHistory[msg.sender].totalBalance;
         }
 
     function resetMyBalance() private  {
@@ -119,22 +127,43 @@ contract CoinFlip is Ownable{
       return _contractBalance_;
     }
 
-    function playableFund() public view returns(uint) {
-        return _contractBalance_ - playerHistory[msg.sender].totalBalance;
+
+    function get_totalAllPlayerBalance_() public view returns (uint) {
+      return _totalAllPlayerBalance_;
+    }
+
+    function contractPlayableFund() public view returns(uint) {
+      if (_contractBalance_ == 0) {
+        return 0;
+      }
+      else {
+        return _contractBalance_ - _totalAllPlayerBalance_;
+      }
+    }
+
+    function playerPlayableFund() public view returns(uint) {
+        uint contractPlayable = contractPlayableFund();
+        if (uint(playerHistory[msg.sender].totalBalance) < contractPlayable) {
+            return playerHistory[msg.sender].totalBalance;
+        }
+        else {
+            return contractPlayable;
+        }
     }
 
     function createMyBet(uint betChoice, uint betAmount_eth) public validPlayerBalance {
+        updateMyBalance();
         uint betAmount = eth2Wei(betAmount_eth);
+
         require(betAmount >= _minBetAmount, "Bet amount too small");
-        require(playerHistory[msg.sender].totalBalance >= betAmount , "TOO BIG BET, NOT ENOUGH BALANCE ON CONTRACT");
-        require(playableFund() >= 2 * betAmount, "To big Bet, contract fund is not enough");
+        require(playerPlayableFund() >= betAmount , "TOO BIG BET, NOT ENOUGH BALANCE ON CONTRACT");
         require(betChoice == 1 || betChoice == 0, "Bet should be 1 or 0");
 
         uint totalActivePredicts = activeBetList[msg.sender].betListPrecdictions.length;
         uint totalActiveBets = activeBetList[msg.sender].betListAmount.length;
 
         require(totalActivePredicts == totalActiveBets, "Invalid database");
-        require(totalActivePredicts < 3, "Too many bets for one draw; Please hit FLIP button!");
+        require(totalActivePredicts < _maxBetWaiting, "Too many bets for one draw; Please hit FLIP button!");
 
         mySpentBalance(betAmount);
 
@@ -180,6 +209,10 @@ contract CoinFlip is Ownable{
         activeBetList[msg.sender] = noBets;
     }
 
+    function playerBetListIsEmpty() private view returns(bool) {
+        return activeBetList[msg.sender].betListAmount.length == 0;
+    }
+
     function playerTossCoin() public validPlayerBalance returns(uint , uint, uint) {
         uint result = random();
         uint spentAmount = 0;
@@ -210,15 +243,22 @@ contract CoinFlip is Ownable{
         return (spentAmount, winAmount, result);
     }
 
-    function withdrawAll() public onlyOwner returns(uint) {
+    function ownerWithdrawAll() public onlyOwner returns(uint) {
        uint toTransfer = getContractBalance();
+
+       //Should cancel all bets before withdrawn
+       //Should return all players ballances before withdrawn
+       _totalAllPlayerBalance_ = 0;
        _contractBalance_ = 0;
+
        msg.sender.transfer(toTransfer);
        return toTransfer;
     }
 
     function playerWithdrawAll() public validPlayerBalance returns(uint) {
         updateMyBalance();
+
+        require(playerBetListIsEmpty(), "Please Cancel your bets or Click Flip Button..");
 
         uint toTransfer = playerHistory[msg.sender].totalBalance;
 

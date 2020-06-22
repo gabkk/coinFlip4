@@ -4,7 +4,7 @@ var web3 = new Web3(Web3.givenProvider);
 
 var contractInstance;
 var playerAddress;
-var contractAddress = "0x125B46ACc66EF576AdF5d54a37A84263C34CE88C";
+var contractAddress = "0xAe9E2506F5Ab242a6ddc0A146A217E4dA5622950";
 
 $(document).ready(function() {
     window.ethereum.enable().then(async function(accounts){
@@ -13,7 +13,7 @@ $(document).ready(function() {
       console.log("contractInstance :",contractInstance);
 
       //get and display Player's balance
-      let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:100000});
+      let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:1000000});
       console.log(playerBalanceNow)
       displayPlayerBalanceInfo(playerBalanceNow)
     });
@@ -23,7 +23,8 @@ $(document).ready(function() {
     $("#topUp_button").click(playerTopUp_eth);
     $("#FundUp_button").click(ownerFundUp_eth);
     window.ethereum.on('accountsChanged', async function(accounts) {
-      await fetchAccountInfo()
+        console.log("Account changed")
+        refreshDisplay();
     });
 });
 
@@ -35,7 +36,7 @@ async function ownerFundUp_eth() {
     var fundUpAmount_eth = $("#FundUp_input").val();
 
     var config = {value: web3.utils.toWei(fundUpAmount_eth, "ether"),
-                  gas:100000, from: playerAddress}; // Should return later for player at the end of game
+                  gas:1000000, from: playerAddress}; // Should return later for player at the end of game
 
     console.log("Fund Up amount:",typeof(fundUpAmount_eth),fundUpAmount_eth)
 
@@ -48,18 +49,15 @@ async function ownerFundUp_eth() {
       })
       .on('receipt', function(receipt){
         console.log("receipt: ",receipt);
-      });
-
-    let ContractBalanceNow = await contractInstance.methods.getContractBalance().call({gas:100000});
-    console.log(ContractBalanceNow)
-    await fetchAccountInfo()
+        refreshDisplay();
+      })
 };
 
 async function playerTopUp_eth() {
     var topUpAmount_eth = $("#topUp_input").val();
 
     var config = {value: web3.utils.toWei(topUpAmount_eth, "ether"),
-                  gas:100000,
+                  gas:1000000,
                   from: playerAddress}; // Should return later for player at the end of game
 
     console.log("Top Up amount:",typeof(topUpAmount_eth),topUpAmount_eth)
@@ -73,13 +71,16 @@ async function playerTopUp_eth() {
       })
       .on('receipt', function(receipt){
         console.log("receipt: ",receipt);
+        refreshDisplay();
       })
-      .then(async function() {
-        let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:100000});
-        console.log("playerBalanceNow =",playerBalanceNow)
-        displayPlayerBalanceInfo(playerBalanceNow)
-      });
 };
+
+async function refreshDisplay() {
+  await fetchAccountInfo()
+  let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:1000000, from: playerAddress});
+  console.log("playerBalanceNow =",playerBalanceNow)
+  displayPlayerBalanceInfo(playerBalanceNow)
+}
 
 function displayPlayerBalanceInfo(playerBalanceNow) {
     $("#Player_totalBalance").text(weiToEther(playerBalanceNow[0]));
@@ -128,14 +129,11 @@ async function placeBet(betChoice) {
         alert("Not valid coin amount!");
         return;
       }
-
-  await fetchAccountInfo()
-
+  refreshDisplay()
   console.log("Button clicked -> Place Bet ",typeof(betChoice),betChoice)
   console.log("BetAmount:",typeof(betAmountEth),betAmountEth,"eth")
-
   await contractInstance.methods.createMyBet(betChoice,betAmountEth)
-    .call({gas:100000, from: contractAddress})
+    .call({gas:1000000, from: contractAddress})
     /*
     .on('transactionHash', function(hash){
       console.log("tx hash :",hash);
@@ -148,13 +146,13 @@ async function placeBet(betChoice) {
     })
     */
 
-  await fetchAccountInfo()
+  refreshDisplay()
 
   console.log("Now calling getMyBet...")
 
   betHistory = await contractInstance.methods
         .getPlayerBet(playerAddress)
-        .call({gas:100000})
+        .call({gas:1000000})
 
   console.log("Bet history:",betHistory)
   displayBetInfo(betHistory);
@@ -165,15 +163,15 @@ async function flipNow(){
 
       result = await contractInstance.methods.playerTossCoin()
             //.call({from: contractAddress, gas: 100000})
-            .call({gas:100000})
+            .call({gas:1000000})
 
       console.log("Bet result:",result)
 
-      await fetchAccountInfo()
+      refreshDisplay()
 
       betHistory =  await contractInstance.methods
             .getPlayerBet(playerAddress)
-            .call({gas:100000, from: playerAddress})
+            .call({gas:1000000, from: playerAddress})
 
       displayBetInfo(betHistory);
 }
