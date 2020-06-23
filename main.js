@@ -4,18 +4,15 @@ var web3 = new Web3(Web3.givenProvider);
 
 var contractInstance;
 var playerAddress;
-var contractAddress = "0xAe9E2506F5Ab242a6ddc0A146A217E4dA5622950";
+var contractAddress = "0x774952e2f334DEE89f78bf6d9002B01D2DA0a408";
 
 $(document).ready(function() {
     window.ethereum.enable().then(async function(accounts){
       await fetchAccountInfo()
-      contractInstance = new web3.eth.Contract(window.abi, contractAddress , {from: playerAddress});
+      contractInstance = new web3.eth.Contract(window.abi, contractAddress , {gas:1000000, from: playerAddress});
       console.log("contractInstance :",contractInstance);
+      refreshDisplay();
 
-      //get and display Player's balance
-      let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:1000000});
-      console.log(playerBalanceNow)
-      displayPlayerBalanceInfo(playerBalanceNow)
     });
     $("#place_bet1_button").click(placeBet1);
     $("#place_bet0_button").click(placeBet0);
@@ -76,22 +73,10 @@ async function playerTopUp_eth() {
 };
 
 async function refreshDisplay() {
+  console.log("===== refreshDisplay =====")
   await fetchAccountInfo()
-  let playerBalanceNow = await contractInstance.methods.getPlayerHistory().call({gas:1000000, from: playerAddress});
-  console.log("playerBalanceNow =",playerBalanceNow)
-  displayPlayerBalanceInfo(playerBalanceNow)
+  await refreshPlayerInfo()
 }
-
-function displayPlayerBalanceInfo(playerBalanceNow) {
-    $("#Player_totalBalance").text(weiToEther(playerBalanceNow[0]));
-    $("#Player_totalTopUp").text(weiToEther(playerBalanceNow[1]));
-    $("#Player_totalWithdrawn").text(weiToEther(playerBalanceNow[2]));
-    $("#Player_totalSpentAmount").text(weiToEther(playerBalanceNow[3]));
-    $("#Player_totalWinAmount").text(weiToEther(playerBalanceNow[4]));
-    $("#Player_totalGames").text(playerBalanceNow[5]);
-    $("#Player_totalWins").text(playerBalanceNow[6]);
-    $("#Player_lastWinAmount").text(weiToEther(playerBalanceNow[7]));
-  };
 
 async function fetchAccountInfo () {
     console.log("* * * fetchAccountInfo * * *")
@@ -124,80 +109,68 @@ function placeBet0() {
 }
 
 async function placeBet(betChoice) {
-  var betAmountEth = $("#betAmount_input").val();
-  if (betAmountEth != Math.round(betAmountEth)) {
-        alert("Not valid coin amount!");
-        return;
-      }
-  refreshDisplay()
-  console.log("Button clicked -> Place Bet ",typeof(betChoice),betChoice)
-  console.log("BetAmount:",typeof(betAmountEth),betAmountEth,"eth")
-  await contractInstance.methods.createMyBet(betChoice,betAmountEth)
-    .call({gas:1000000, from: contractAddress})
-    /*
-    .on('transactionHash', function(hash){
-      console.log("tx hash :",hash);
-    })
-    .on('confirmation', function(confirmationNumber, receipt){
-        console.log("confirmation Number:",confirmationNumber);
-    })
-    .on('receipt', function(receipt){
-      console.log("receipt: ",receipt);
-    })
-    */
+      var betAmountEth = $("#betAmount_input").val();
+      if (betAmountEth != Math.round(betAmountEth)) {
+            alert("Not valid coin amount!");
+            return;
+          }
 
-  refreshDisplay()
+      await refreshDisplay()
+      console.log("Button clicked -> Place New Bet ",typeof(betChoice),betChoice)
+      console.log("BetAmount:",typeof(parseInt(betAmountEth)),betAmountEth,"eth")
 
-  console.log("Now calling getMyBet...")
-
-  betHistory = await contractInstance.methods
-        .getPlayerBet(playerAddress)
-        .call({gas:1000000})
-
-  console.log("Bet history:",betHistory)
-  displayBetInfo(betHistory);
-}
+      await contractInstance.methods.createMyBet(betChoice,parseInt(betAmountEth))
+        .send({gas:1000000, from: playerAddress})
+        .on('transactionHash', function(hash){
+          console.log("tx hash :",hash);
+        })
+        .on('confirmation', function(confirmationNumber, receipt){
+            console.log("confirmation Number:",confirmationNumber);
+        })
+        .on('receipt', function(receipt){
+          console.log("receipt: ",receipt);
+          refreshDisplay();
+        })
+  }
 
 async function flipNow(){
+      await refreshDisplay()
       console.log("... Calling Flip Contract..");
 
       result = await contractInstance.methods.playerTossCoin()
             //.call({from: contractAddress, gas: 100000})
-            .call({gas:1000000})
+            .send({gas:1000000, from: playerAddress})
 
       console.log("Bet result:",result)
 
-      refreshDisplay()
+      await refreshDisplay()
 
-      betHistory =  await contractInstance.methods
-            .getPlayerBet(playerAddress)
-            .call({gas:1000000, from: playerAddress})
-
-      displayBetInfo(betHistory);
 }
 
-function displayBetInfo(betHistory){
-  betChoice_ar = betHistory[0]
-  betAmount_ar = betHistory[1]
-  console.log("...updating bet status...")
-  console.log("Bet array: ",betChoice_ar)
-  console.log("Bet amount array: ",betAmount_ar)
-  var betAmount = [0,0]
-  for (x=0; x<betChoice_ar.length; x++) {
-    if (betChoice_ar[x]=="1") {
-      betAmount[1] += parseInt(betAmount_ar[x])
-    }
-    else if (betChoice_ar[x]=="0") {
-      betAmount[0] += parseInt(betAmount_ar[x])
-    }
-  }
-  console.log("typeof(betAmount[1]) =",typeof(betAmount[1]))
-  betAmount[1] = web3.utils.fromWei(betAmount[1].toString(), "ether")
-  betAmount[0] = web3.utils.fromWei(betAmount[0].toString(), "ether")
-  betAmount[1] = betAmount[1].toString()+" ETH"
-  betAmount[0] = betAmount[0].toString()+" ETH"
-  console.log("typeof(betAmount[1]) =",typeof(betAmount[1]))
-  $("#betAmount1_output").text(betAmount[1]);
-  $("#betAmount0_output").text(betAmount[0]);
+
+async function refreshPlayerInfo(){
+
+  betHistory = await contractInstance.methods.getPlayerHistory().call({gas:1000000, from: playerAddress});
+  console.log("playerBalanceNow =",betHistory)
+
+  $("#Player_totalBalance").text(weiToEther(betHistory[0]));
+  $("#Player_totalTopUp").text(weiToEther(betHistory[1]));
+  $("#Player_totalWithdrawn").text(weiToEther(betHistory[2]));
+  $("#Player_totalSpentAmount").text(weiToEther(betHistory[3]));
+  $("#Player_totalWinAmount").text(weiToEther(betHistory[4]));
+  $("#Player_totalGames").text(betHistory[5]);
+  $("#Player_totalWins").text(betHistory[6]);
+  $("#Player_lastWinAmount").text(weiToEther(betHistory[7]));
+
+  console.log("Now calling getMyBet...")
+  betList = await contractInstance.methods.getMyBet().call({gas:1000000, from: playerAddress});
+
+  bet0 = betList[0]
+  bet1 = betList[1]
+  console.log("...updating bet status =",betList)
+  console.log("Bet for 0: ",bet0)
+  console.log("Bet for 1: ",bet1)
+  $("#betAmount1_output").text(bet1);
+  $("#betAmount0_output").text(bet0);
 
 }

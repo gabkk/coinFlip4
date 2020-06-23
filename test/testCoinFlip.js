@@ -171,6 +171,7 @@ contract("CoinFlip", async function(accounts){
 
   it("should accept new bet from PLayer 1", async function() {
 
+    console.log("======== PLAYER 1: FIRST BET =======")
     betChoice_1 = 1;
     betAmount_eth_1 = "1";
 
@@ -185,13 +186,36 @@ contract("CoinFlip", async function(accounts){
 
     await instance.createMyBet( betChoice_1, betAmount_eth_1, {gas:1000000, from: accounts[1]});
     betted = await instance.getMyBet({gas:100000, from: accounts[1]});
-    console.log("Betted for :",betted[0]," Should be:", betChoice_1);
-    console.log("Betted Amount :",betted[1]," Should be:", betAmount_eth_1);
-    assert(betted[0][betted[0].length-1] == betChoice_1, "wrong Bet choice filled");
-    assert(betted[1][betted[1].length-1] == betAmount_wei_1, "Wrong bet amount filled")
+    console.log("Betted Amount for 0 :",betted[0]," Should be:", 0);
+    console.log("Betted Amount for 1:",betted[1]," Should be:", betAmount_wei_1);
+    assert(betted[0] == 0, "wrong Bet choice filled");
+    assert(betted[1] == betAmount_wei_1, "Wrong bet amount filled")
+
+    //==== 2nd bet====
+    console.log("======== PLAYER 1: SECOND BET =======")
+    betChoice_1_1 = 1;
+    betAmount_eth_1_1 = "2";
+
+    get_playable_wei = await instance.playerPlayableFund({gas:100000, from: accounts[1]})
+    console.log("get_playable_wei = ",parseInt(get_playable_wei))
+
+    playerHistory_after =  await instance.getPlayerHistory({gas:100000, from: accounts[1]})
+    console.log("Player_totalBalance =",parseInt(playerHistory_after[0]))
+
+    betAmount_wei_1_1 = parseInt(await instance.eth2Wei(betAmount_eth_1_1, {gas:100000, from: accounts[1]}))
+    console.log("PlayerBetAmount_wei =",betAmount_wei_1_1)
+
+    await instance.createMyBet( betChoice_1_1, betAmount_eth_1_1, {gas:1000000, from: accounts[1]});
+    betted = await instance.getMyBet({gas:100000, from: accounts[1]});
+    console.log("Betted Amount for 0 :",betted[0]," Should be:", 0);
+    console.log("Betted Amount for 1:",betted[1]," Should be:", parseInt(betAmount_wei_1)+parseInt(betAmount_wei_1_1));
+    assert(betted[0] == 0, "wrong Bet choice filled");
+    assert(betted[1] == parseInt(betAmount_wei_1)+parseInt(betAmount_wei_1_1), "Wrong bet amount filled")
+
   });
 
   it("should accept new bet from PLayer 2", async function() {
+    console.log("======== PLAYER 2: FIRST BET =======")
     betChoice_2 = 1;
     betAmount_eth_2 = 1;
 
@@ -204,12 +228,37 @@ contract("CoinFlip", async function(accounts){
     betAmount_wei_2 = parseInt(await instance.eth2Wei(betAmount_eth_2, {gas:100000, from: accounts[2]}))
     console.log("PlayerBetAmount_wei =",betAmount_wei_2)
 
+    console.log("2.0 bet for :",betChoice_2, " amount:", betAmount_eth_2,"eth")
+
     await instance.createMyBet( betChoice_2, betAmount_eth_2, {gas:1000000, from: accounts[2]});
-    let betted = await instance.getMyBet({gas:100000, from: accounts[2]});
-    console.log("Betted for :",betted[0]," Should be:", betChoice_2);
-    console.log("Betted Amount :",betted[1]," Should be:", betAmount_eth_2);
-    assert(betted[0][betted[0].length-1] == betChoice_2, "wrong Bet choice filled");
-    assert(betted[1][betted[1].length-1] == betAmount_wei_2, "Wrong bet amount filled")
+    betted = await instance.getMyBet({gas:100000, from: accounts[2]});
+    console.log("Betted Amount for 0 :",betted[0]," Should be:", 0);
+    console.log("Betted Amount for 1:",betted[1]," Should be:", betAmount_wei_2);
+    assert(betted[0] == 0, "wrong Bet choice filled after 1st bet");
+    assert(betted[1] == betAmount_wei_2, "Wrong bet amount filled  after 1st bet")
+
+    console.log("======== PLAYER 2: SECOND BET =======")
+    betChoice_2_1 = 0;
+    betAmount_eth_2_1 = 1;
+
+    get_playable_wei = await instance.playerPlayableFund({gas:100000, from: accounts[2]})
+    console.log("get_playable_wei = ",parseInt(get_playable_wei))
+
+    playerHistory_after =  await instance.getPlayerHistory({gas:100000, from: accounts[2]})
+    console.log("Player_totalBalance =",parseInt(playerHistory_after[0]))
+
+    betAmount_wei_2_1 = parseInt(await instance.eth2Wei(betAmount_eth_2_1, {gas:100000, from: accounts[2]}))
+    console.log("PlayerBetAmount_wei =",betAmount_wei_2_1)
+
+    console.log("2.1 bet for :",betChoice_2_1, " amount:", betAmount_eth_2_1,"eth")
+    await instance.createMyBet( betChoice_2_1, betAmount_eth_2_1, {gas:1000000, from: accounts[2]});
+
+    betted = await instance.getMyBet({gas:100000, from: accounts[2]});
+    console.log("Betted Amount for 0 :",betted[0]," Should be:", betAmount_wei_2_1);
+    console.log("Betted Amount for 1:", betted[1]," Should be:", betAmount_wei_2);
+    assert(betted[0] == betAmount_wei_2_1, "wrong Bet choice filled  after 2nd bet");
+    assert(betted[1] == betAmount_wei_2, "Wrong bet amount filled  after 2nd bet")
+
   });
 
   it("should not accept new bet more than player's balance or contract's balance", async function() {
@@ -228,18 +277,6 @@ contract("CoinFlip", async function(accounts){
     await truffleAssert.fails(
         instance.createMyBet( BIGbetChoice2 , BIGbetAmount2 , {gas:1000000, from: accounts[1]}),
         truffleAssert.ErrorType.REVERT);
-
-    betted = await instance.getMyBet({gas:100000, from: accounts[1]});
-    console.log("Betted for :",betted[0]," Should be:", betChoice_1);
-    console.log("Betted Amount :",betted[1]," Should be:", betAmount_eth_1);
-    assert(betted[0][betted[0].length-1] == betChoice_1, "wrong Bet choice filled");
-    assert(betted[1][betted[1].length-1] == betAmount_wei_1, "Wrong bet amount filled");
-
-    betted = await instance.getMyBet({gas:100000, from: accounts[2]});
-    console.log("Betted for :",betted[0]," Should be:", betChoice_2);
-    console.log("Betted Amount :",betted[1]," Should be:", betAmount_eth_2);
-    assert(betted[0][betted[0].length-1] == betChoice_2, "wrong Bet choice filled");
-    assert(betted[1][betted[1].length-1] == betAmount_wei_2, "Wrong bet amount filled");
 
   });
 
@@ -261,21 +298,14 @@ contract("CoinFlip", async function(accounts){
 
     await truffleAssert.fails(
       instance.playerWithdrawAll({gas:1000000, from: accounts[2]}));
-
-    get_playable_wei = await instance.playerPlayableFund({gas:100000, from: accounts[1]})
-    console.log("get_playable_wei player 1 = ",web3.utils.fromWei(get_playable_wei,"ether"))
-    assert(get_playable_wei > 0, "Not correct playable 1 value")
-
-    get_playable_wei = await instance.playerPlayableFund({gas:100000, from: accounts[2]})
-    console.log("get_playable_wei player 2 = ",web3.utils.fromWei(get_playable_wei,"ether"))
-    assert(get_playable_wei > 0, "Not correct playable 2 value")
   });
 
   it("Player Toss Coin to return..", async function() {
-    tossResult1 = await instance.playerTossCoin({gas:1000000, from: accounts[1]});
-    console.log("tossResult1 = ",tossResult1);
-    tossResult2 = await instance.playerTossCoin({gas:1000000, from: accounts[2]});
-    console.log("tossResult2 = ",tossResult2);
+    result1 = await instance.playerTossCoin({gas:1000000, from: accounts[1]});
+    console.log("Result 1 = ",result1);
+    result2 = await instance.playerTossCoin({gas:1000000, from: accounts[2]});
+    console.log("Result 2 = ",result2);
+
     //should add more checks..
 
   });
@@ -298,7 +328,7 @@ contract("CoinFlip", async function(accounts){
   });
 
 
-  it("Should not allow Owner to withdraw ", async function() {
+  it("Should allow Owner to withdraw ", async function() {
 
     await truffleAssert.passes(
       instance.ownerWithdrawAll({gas:1000000, from: accounts[0]}));
