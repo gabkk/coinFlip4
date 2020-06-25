@@ -57,12 +57,7 @@
           <div>
           Player total Win Amount: <span id="Player_totalWinAmount"></span>
           </div>
-          <div>
-          Player total games: <span id="Player_totalGames"></span>
-          </div>
-          <div>
-          Player total wins: <span id="Player_totalWins"></span>
-          </div>
+
           <div>
           Player last win amount: <span id="Player_lastWinAmount"></span>
           </div>
@@ -81,12 +76,46 @@
       </div>
 
       <div>
-        <h2>Placed bets: </h2>
         <div>
           Bet amount for Head: <span id="betAmount1_output"></span>
         </div>
         <div>
           Bet amount for Tail: <span id="betAmount0_output"></span>
+        </div>
+
+        <div>
+          Contract Address: <span id="Contract_address"></span>
+        </div>
+        <div>
+          Contract Balance: <span id="Contract_balance"></span>
+        </div>
+        <div>
+        <button type="button" id="Submit_button" class="btn btn-primary"> SUBMIT BETS </button>
+        </div>
+        <div>
+        On chain bet for Head (0): <span id="betOnchainAmount0_output"></span>
+        </div>
+        <div>
+        On chain bet for Tail (1): <span id="betOnchainAmount1_output"></span>
+        </div>
+
+    </div>
+
+    <div>
+        <div>
+        <button type="button" id="Play_button" class="btn btn-primary"> LET'S FLIP !!!</button>
+        </div>
+        <div>
+        Player total games: <span id="Player_totalGames"></span>
+        </div>
+        <div>
+        Player total wins: <span id="Player_totalWins"></span>
+        </div>
+    </div>
+
+    <div>
+        <div>
+        <button type="button" id="PlayerWithdrawAll_button" class="btn btn-primary"> PLAYER WITHDRAW ALL </button>
         </div>
         <div>
           Player Address: <span id="Player_address"></span>
@@ -94,14 +123,18 @@
         <div>
           Player Balance: <span id="Player_balance"></span>
         </div>
+    </div>
+
+    <div>
         <div>
-          Contract Address: <span id="Contract_address"></span>
+        <button type="button" id="OwnerWithdrawAll_button" class="btn btn-primary"> OWNER WITHDRAW ALL </button>
         </div>
         <div>
-          Contract Balance: <span id="Contract_balance"></span>
+          Owner Address: <span id="Owner_address"></span>
         </div>
-        <button type="button" id="play_button" class="btn btn-primary"> LET'S FLIP !!!</button>
-      </div>
+        <div>
+          Owner Balance: <span id="Owner_balance"></span>
+        </div>
     </div>
 
   </body>

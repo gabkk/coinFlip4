@@ -340,14 +340,9 @@ var abi = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "betChoice",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
+        "internalType": "uint256[]",
         "name": "betAmount_eth",
-        "type": "uint256"
+        "type": "uint256[]"
       }
     ],
     "name": "createMyBet",

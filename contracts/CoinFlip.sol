@@ -155,30 +155,28 @@ contract CoinFlip is Ownable{
     }
 
 
-    function createMyBet(uint betChoice, uint betAmount_eth) public returns (uint, uint){
+    function createMyBet(uint[] memory betAmount_eth) public returns (uint, uint){
 
         updateMyBalance();
         require(validPlayerBalance(), "Not valid Player Balance");
 
-        uint betAmount = eth2Wei(betAmount_eth);
-        uint playerPlayable = playerPlayableFund();
-        emit notice("playerPlayable = ",playerPlayable);
-        emit notice("betAmount = ",betAmount);
-        require(betAmount >= _minBetAmount, "Bet amount too small");
-        require(playerPlayable >= uint(betAmount) , "TOO BIG BET, NOT ENOUGH BALANCE ON CONTRACT");
-        require(betChoice == 1 || betChoice == 0, "Bet should be 1 or 0");
+        uint betAmount_0= eth2Wei(betAmount_eth[0]);
+        uint betAmount_1= eth2Wei(betAmount_eth[1]);
 
-        mySpentBalance(betAmount);
-        if (1 == betChoice) {
-            activeBet[msg.sender].for1 += betAmount;
-            }
-        else {
-            activeBet[msg.sender].for0 += betAmount;
-        }
+        uint playerPlayable = playerPlayableFund();
+        require(betAmount_0+betAmount_1 >= _minBetAmount, "Bet amount too small");
+        require((playerPlayable >= uint(betAmount_0) && (playerPlayable >= uint(betAmount_1))) ,
+                    "TOO BIG BET, NOT ENOUGH BALANCE ON CONTRACT");
+
+        mySpentBalance(betAmount_0+betAmount_1); //Deduct spent amount from player balance
+
+        activeBet[msg.sender].for1 += betAmount_1;
+        activeBet[msg.sender].for0 += betAmount_0;
 
         emit newBetCreated(activeBet[msg.sender].for0, activeBet[msg.sender].for1, msg.sender);
         return (activeBet[msg.sender].for0, activeBet[msg.sender].for1);
     }
+
 
     function getMyBet() public view returns(uint, uint)  {
         return ( activeBet[msg.sender].for0, activeBet[msg.sender].for1 );
