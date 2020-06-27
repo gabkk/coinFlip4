@@ -3,12 +3,12 @@
 import "./Ownable.sol";
 pragma solidity 0.6.10;
 
-contract CoinFlip is Ownable{
+contract CoinFlip100 is Ownable{
 
     uint public BET_RANGE_MIN = 0;
     uint public BET_RANGE_MAX = 99;
 
-    uint CHIP_TO_WEI = 1000000000000000000; //1 chips = 1 eth - Can be parametric
+    uint CHIP_TO_WEI = 1000000000000000; //1 chips = 1 eth - Can be parametric
     uint public BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
     uint BET_WIN_RATE = 190; //Win rate = 1,9 with 2 decimals
 
@@ -72,6 +72,9 @@ contract CoinFlip is Ownable{
             }
     }
 
+    function wei2Chip(uint _wei) private view returns(uint) {
+        return _wei / CHIP_TO_WEI;
+    }
 
     function chip2Wei(uint chip) private view returns(uint) {
         return chip * CHIP_TO_WEI;
@@ -83,6 +86,14 @@ contract CoinFlip is Ownable{
         }
         return chip_ar;
     }
+
+    function wei2Chip_ar(uint[] memory wei_ar) private view returns(uint[] memory) {
+        for (uint x=0; x<wei_ar.length; x++) {
+           wei_ar[x] = wei2Chip(wei_ar[x]);
+        }
+        return wei_ar;
+    }
+
 
     //Owner balance topUp
     function ownerFundUp_chip(uint topUp_chip) public onlyOwner payable {
@@ -185,6 +196,8 @@ contract CoinFlip is Ownable{
             sumBetAmount += betAmount_wei[x];
         }
 
+        require(sumBetAmount <= playerPlayableFund(), "TOO BIG BET, PLEASE ADJUST OUR BET");
+
         return true;
     }
 
@@ -202,7 +215,6 @@ contract CoinFlip is Ownable{
         //money amount received from frontEnd is in Chips;
         //Should conver all chips to Wei
 
-
         require(activeBet[msg.sender].waitingId == 0, ".. Please Wait for result of last bet..");
 
         require(validPlayerBalance(), "Not valid Player Balance");
@@ -210,7 +222,6 @@ contract CoinFlip is Ownable{
         uint[] memory betAmount = chip2Wei_ar(betAmount_chip);
 
         require(verifyBet(betNumbers,betAmount), "NOT VALID BET");
-
 
         mySpentBalance(betAmount); //Deduct spent amount from player balance
 
@@ -223,9 +234,9 @@ contract CoinFlip is Ownable{
 
 
     function getMyBet() public view returns(uint[] memory, uint[] memory,bool, uint)  {
-        //Data sent to front page from contract is in Wei
+        //Data sent to front page from contract is in Chips
         return (    activeBet[msg.sender].betNumbers,
-                    activeBet[msg.sender].betAmount, //wei
+                    wei2Chip_ar(activeBet[msg.sender].betAmount), //wei
                     activeBet[msg.sender].waitingResult,
                     activeBet[msg.sender].waitingId);
     }
@@ -238,25 +249,20 @@ contract CoinFlip is Ownable{
     }
 
 
-    function getWinAmountWei(uint winChip) public view returns(uint) {
-        uint sourceWei = chip2Wei(winChip);
-        uint result = (sourceWei*BET_WIN_RATE)/100;
-        return result;
+    function getWinAmountWei(uint winWei) public view returns(uint) {
+        return (winWei*BET_WIN_RATE)/100;
     }
 
-    function playerTossCoin() public returns(uint) {
+    function playerTossCoin() public returns(uint, uint) {
 
         require(validPlayerBalance(), "playerTossCoin: Not valid Player Balance");
         require(activeBet[msg.sender].betNumbers.length > 0,"playerTossCoin: No bet placed, plase place the bet!");
-
-        //double check for data validity - can remove to save gas
-        require(verifyBet(activeBet[msg.sender].betNumbers,activeBet[msg.sender].betAmount), "playerTossCoin: NOT VALID BET");
 
         activeBet[msg.sender].waitingResult = true;
         activeBet[msg.sender].waitingId = 1231321; //For use later
         uint result = random();
 
-        require(    result >= BET_RANGE_MIN && result <= BET_RANGE_MAX, "playerTossCoin: Random out of range");
+        require(result >= BET_RANGE_MIN && result <= BET_RANGE_MAX, "playerTossCoin: Random out of range");
 
         uint winAmount_wei = 0;
 
@@ -270,7 +276,7 @@ contract CoinFlip is Ownable{
         myWinBalance(winAmount_wei);
 
         emit betFinished(winAmount_wei, result);
-        return (winAmount_wei);
+        return (winAmount_wei, result);
     }
 
     function ownerWithdrawAll() public onlyOwner returns(uint) {

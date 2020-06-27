@@ -2,11 +2,20 @@
 //web3.setProvider(new Web3.providers.WebsocketProvider('ws://localhost:8546'));
 var web3 = new Web3(Web3.givenProvider);
 
+// CONTRACT VARIABLES - should be sync with COntract values
+var BET_RANGE_MIN = 0;
+var BET_RANGE_MAX = 99;
+var CHIP_TO_WEI = 10**15; //1 chips = 1 eth - Can be parametric
+var CHIP_TO_ETH = CHIP_TO_WEI/10**18;
+var BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
+var BET_WIN_RATE = 190
+
 var CONTRACT_INSTANCE;
 var ACTIVE_ADDRESS;
-var CONTRACT_ADDRESS = "0x3Aae9dd58057e9F409E85f8A7750312E99a7508C";
-var OWNER_ADDRESS;
-var BET_LIST_AMOUNT = [0,0]; //Amount Eth betted for 0 and 1
+var CONTRACT_ADDRESS = "0xcf031ECc9792583F48430b42610664E313ccF403";
+var OWNER_ADDRESS = "";
+var BET_LIST_NUMBERS = [];
+var BET_LIST_AMOUNTS = []; //Amount Eth betted for 0 and 1
 var BETTING_LOCKED;
 
 $(document).ready(function() {
@@ -15,15 +24,14 @@ $(document).ready(function() {
       CONTRACT_INSTANCE = new web3.eth.Contract(window.abi, CONTRACT_ADDRESS , {gas:1000000, from: ACTIVE_ADDRESS});
       console.log("CONTRACT_INSTANCE :",CONTRACT_INSTANCE);
       refreshDisplay();
-
     });
 
-    $("#place_bet1_button").click(placeBet1);
-    $("#place_bet0_button").click(placeBet0);
+    $("#add_bet_button").click(addBet);
+    $("#cancel_all_button").click(cancelBet);
     $("#Play_button").click(flipNow);
     $("#topUp_button").click(playerTopUp_eth);
     $("#FundUp_button").click(ownerFundUp_eth);
-    $("#Submit_button").click(placeBet);
+    $("#Submit_button").click(submitBet);
     $("#PlayerWithdrawAll_button").click(PlayerWithdrawAll);
     $("#OwnerWithdrawAll_button").click(OwnerWithdrawAll);
 
@@ -32,6 +40,83 @@ $(document).ready(function() {
         refreshDisplay();
     });
 });
+
+
+function cancelBet() {
+    BET_LIST_NUMBERS = []
+    BET_LIST_AMOUNTS = []
+    refreshDisplay()
+}
+
+function validBetNumber(_num) {
+  num = parseFloat(_num)
+
+  if ((num < BET_RANGE_MIN) || (num > BET_RANGE_MAX)) {
+    alert("bet number out of range")
+    return false
+  }
+
+  if (num != Math.round(num)) {
+    alert("bet number should be interger from ",BET_RANGE_MIN," to ",BET_RANGE_MAX)
+    return false
+  }
+  return true
+}
+
+function validBetAmount(_num) { //chips
+  num = parseFloat(_num)
+
+  if (num < 1) {
+    alert(" bet amount shold be interger and higher 0 ")
+    return false
+  }
+
+  if (num != Math.round(num)) {
+    alert(" bet amount shold be interger and higher 0 ")
+    return false
+  }
+  return true
+}
+
+function addBet() {
+  var betAmount_chip = $("#betAmount_input").val();
+  var betNumber = $("#betNumber_input").val();
+
+  if (validBetNumber(betNumber) && validBetAmount(betAmount_chip) ){
+    BET_LIST_NUMBERS.push(betNumber)
+    BET_LIST_AMOUNTS.push(parseInt(betAmount_chip))
+  }
+  refreshDisplay()
+}
+
+async function submitBet() { //This will place bet to Contract
+      //If more than 2 choices => Should send all choices in one Call;
+      //For later upgradability to multi choices, will send both 1 and 0 bets..
+      //Later will Merge Place Bet and Toss Coin into One Function call
+
+      await getActiveAddress()
+
+      console.log("Button clicked -> Place New Bet to blockchain...")
+      console.log("Bet Numbers:",BET_LIST_NUMBERS)
+      console.log("Bet Amounts:",BET_LIST_AMOUNTS)
+
+      await CONTRACT_INSTANCE.methods.createMyBet(BET_LIST_NUMBERS, BET_LIST_AMOUNTS) //Does Solidity accept Array as input?
+        .send({gas:1000000, from: ACTIVE_ADDRESS})
+        .on('transactionHash', function(hash){
+          console.log("tx hash :",hash);
+          lockBetting();
+        })
+        .on('confirmation', function(confirmationNumber, receipt){
+            console.log("confirmation Number:",confirmationNumber);
+        })
+        .on('receipt', async function(receipt){
+          console.log("receipt: ",receipt);
+          await refreshDisplay();
+          console.log("PRESS FLIP TO TOSS COIN AND GET RESULT....");
+          cancelBet()
+        })
+};
+
 
 function lockBetting() {
   BETTING_LOCKED = true;
@@ -77,15 +162,20 @@ function weiToEther(balance) {
     return web3.utils.fromWei(balance, "ether") + " ETH"
 }
 
+function chipToWei(chip) {
+  return (CHIP_TO_WEI * chip)
+}
+
 async function ownerFundUp_eth() {
     var fundUpAmount_eth = $("#FundUp_input").val();
-
-    var config = {value: web3.utils.toWei(fundUpAmount_eth, "ether"),
+    await getActiveAddress()
+    var config = {value: web3.utils.toWei(fundUpAmount_eth.toString(), "ether"),
                   gas:1000000, from: ACTIVE_ADDRESS}; // Should return later for player at the end of game
 
     console.log("Fund Up amount:",typeof(fundUpAmount_eth),fundUpAmount_eth)
 
-    await CONTRACT_INSTANCE.methods.ownerFundUp_eth(fundUpAmount_eth).send(config)
+    fundUpAmount_chip = fundUpAmount_eth / CHIP_TO_ETH
+    await CONTRACT_INSTANCE.methods.ownerFundUp_chip(fundUpAmount_chip).send(config)
       .on('transactionHash', function(hash){
         console.log("tx hash :",hash);
       })
@@ -101,14 +191,15 @@ async function ownerFundUp_eth() {
 
 async function playerTopUp_eth() {
     var topUpAmount_eth = $("#topUp_input").val();
-
-    var config = {value: web3.utils.toWei(topUpAmount_eth, "ether"),
+    await getActiveAddress()
+    var config = {value: web3.utils.toWei(topUpAmount_eth.toString(), "ether"),
                   gas:1000000,
                   from: ACTIVE_ADDRESS}; // Should return later for player at the end of game
 
     console.log("Top Up amount:",typeof(topUpAmount_eth),topUpAmount_eth)
 
-    await CONTRACT_INSTANCE.methods.playerTopUp_eth(topUpAmount_eth).send(config)
+    topUpAmount_chip = topUpAmount_eth/CHIP_TO_ETH
+    await CONTRACT_INSTANCE.methods.playerTopUp_chip(topUpAmount_chip).send(config)
       .on('transactionHash', function(hash){
         console.log("tx hash :",hash);
       })
@@ -143,10 +234,12 @@ async function getActiveAddress() {
 }
 
 async function refreshOwnerInfo() {
-    owner_balance = await web3.eth.getBalance(OWNER_ADDRESS);
+    if (OWNER_ADDRESS!= "" ) {
+      owner_balance = await web3.eth.getBalance(OWNER_ADDRESS);
+      $("#Owner_address").text(OWNER_ADDRESS);
+      $("#Owner_balance").text(weiToEther(owner_balance));
+    }
     contract_balance = await web3.eth.getBalance(CONTRACT_ADDRESS);
-    $("#Owner_address").text(OWNER_ADDRESS);
-    $("#Owner_balance").text(weiToEther(owner_balance));
     $('#Contract_balance').text(web3.utils.fromWei(contract_balance, "ether") + " ETH");
     $('#Contract_address').text(CONTRACT_ADDRESS);
 }
@@ -168,77 +261,46 @@ async function refreshPlayerInfo(){
       $("#Player_lastWinAmount").text(weiToEther(betHistory[7]));
 }
 
+function weiToEth_ar(wei_ar) {
+      eth_ar = []
+      for (x=0; x<wei_ar.length; x++) {
+        eth_ar.push(web3.utils.fromWei(wei_ar[x].toString(),"ether"))
+      }
+      return eth_ar
+}
+
 async function refreshOnChainBetInfo() {
-      console.log("Now calling getMyBet...")
+
       //get bet List from contract
+      console.log("Now calling getMyBet...")
       betList = await CONTRACT_INSTANCE.methods.getMyBet().call({gas:1000000, from: ACTIVE_ADDRESS});
 
-      bet0 = betList[0]
-      bet1 = betList[1]
+      ONCHAIN_BET_LIST_NUMBERS = betList[0]
+      ONCHAIN_BET_LIST_AMOUNTS = betList[1]
+      BETTING_LOCKED = betList[2]
+      //BETTING ID= betList[3]
+
       console.log("...updating on chain bet status =",betList)
-      console.log("On Chain Bet for 0: ",bet0)
-      console.log("On Chain Bet for 1: ",bet1)
-      $("#betAmount1_output").text(bet1);
-      $("#betAmount0_output").text(bet0);
+      console.log("On Chain Bet Numbers: ",ONCHAIN_BET_LIST_NUMBERS)
+      console.log("On Chain Bet Amounts(chips): ",ONCHAIN_BET_LIST_AMOUNTS)
+
+      $("#onchain_betNumbers_output").text(ONCHAIN_BET_LIST_NUMBERS);
+      $("#onchain_betAmounts_output").text(ONCHAIN_BET_LIST_AMOUNTS);
 }
+
 
 function refreshLocalBetList() {
-    bet0 = BET_LIST_AMOUNT[0]
-    bet1 = BET_LIST_AMOUNT[1]
-    console.log("...updating bet status =",BET_LIST_AMOUNT)
-    console.log("Bet for 0: ",BET_LIST_AMOUNT[0]+" ETH")
-    console.log("Bet for 1: ",BET_LIST_AMOUNT[1]+" ETH")
-    $("#betAmount1_output").text(BET_LIST_AMOUNT[1]+" ETH");
-    $("#betAmount0_output").text(BET_LIST_AMOUNT[0]+" ETH");
+    console.log("...updating bet status =")
+    console.log("Bet NUMBERS",BET_LIST_NUMBERS)
+    console.log("Bet AMOUNTS",BET_LIST_AMOUNTS,"(chips)")
+    if (!BETTING_LOCKED) {
+      $("#betNumbers_output").text(BET_LIST_NUMBERS);
+      $("#betAmounts_output").text(BET_LIST_AMOUNTS,"(chips)");
+    }
+
+    $("#chip_to_ether").text(CHIP_TO_ETH.toString()+" ETH");
 }
 
-function placeBet1() {
-  placeBetToBrowser(1)
-}
-
-function placeBet0() {
-  placeBetToBrowser(0)
-}
-
-function placeBetToBrowser(betChoice) {
-  var betAmountEth = $("#betAmount_input").val();
-  if (betAmountEth != Math.round(betAmountEth)) {
-        alert("Not valid coin amount!");
-        return;
-      };
-  if (betChoice!=1 && betChoice!=0) {
-    alert("Not valid Bet");
-    return;
-  }
-  BET_LIST_AMOUNT[betChoice] += parseInt(betAmountEth)
-  refreshLocalBetList()
-}
-
-async function placeBet() { //This will place bet to Contract
-      //If more than 2 choices => Should send all choices in one Call;
-      //For later upgradability to multi choices, will send both 1 and 0 bets..
-      //Later will Merge Place Bet and Toss Coin into One Function call
-
-      await refreshDisplay()
-      console.log("Button clicked -> Place New Bet to blockchain...")
-      console.log("BetAmount 0:",typeof((BET_LIST_AMOUNT[0]),(BET_LIST_AMOUNT[0],"eth")))
-      console.log("BetAmount 1:",typeof((BET_LIST_AMOUNT[1]),(BET_LIST_AMOUNT[1],"eth")))
-
-      await CONTRACT_INSTANCE.methods.createMyBet(BET_LIST_AMOUNT) //Does Solidity accept Array as input?
-        .send({gas:1000000, from: ACTIVE_ADDRESS})
-        .on('transactionHash', function(hash){
-          console.log("tx hash :",hash);
-          lockBetting();
-        })
-        .on('confirmation', function(confirmationNumber, receipt){
-            console.log("confirmation Number:",confirmationNumber);
-        })
-        .on('receipt', async function(receipt){
-          console.log("receipt: ",receipt);
-          await refreshDisplay();
-          console.log("PRESS FLIP TO TOSS COIN AND GET RESULT....");
-        })
-};
 
 async function flipNow(){
       await refreshDisplay()

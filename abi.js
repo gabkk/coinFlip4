@@ -23,15 +23,15 @@ var abi = [
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "betChoice",
-        "type": "uint256"
+        "internalType": "uint256[]",
+        "name": "betNumbers",
+        "type": "uint256[]"
       },
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "betAmount",
-        "type": "uint256"
+        "internalType": "uint256[]",
+        "name": "betAmounts_chip",
+        "type": "uint256[]"
       },
       {
         "indexed": false,
@@ -61,6 +61,48 @@ var abi = [
     ],
     "name": "notice",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "BET_MIN_AMOUNT_WEI",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [],
+    "name": "BET_RANGE_MAX",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [],
+    "name": "BET_RANGE_MIN",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
   },
   {
     "inputs": [],
@@ -101,13 +143,13 @@ var abi = [
     "name": "activeBet",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "for0",
-        "type": "uint256"
+        "internalType": "bool",
+        "name": "waitingResult",
+        "type": "bool"
       },
       {
         "internalType": "uint256",
-        "name": "for1",
+        "name": "waitingId",
         "type": "uint256"
       }
     ],
@@ -185,14 +227,8 @@ var abi = [
     "constant": true
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "eth",
-        "type": "uint256"
-      }
-    ],
-    "name": "eth2Wei",
+    "inputs": [],
+    "name": "random",
     "outputs": [
       {
         "internalType": "uint256",
@@ -208,11 +244,11 @@ var abi = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "topUp_eth",
+        "name": "topUp_chip",
         "type": "uint256"
       }
     ],
-    "name": "ownerFundUp_eth",
+    "name": "ownerFundUp_chip",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function",
@@ -222,11 +258,11 @@ var abi = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "topUp_eth",
+        "name": "topUp_chip",
         "type": "uint256"
       }
     ],
-    "name": "playerTopUp_eth",
+    "name": "playerTopUp_chip",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function",
@@ -341,21 +377,21 @@ var abi = [
     "inputs": [
       {
         "internalType": "uint256[]",
-        "name": "betAmount_eth",
+        "name": "betNumbers",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "betAmount_chip",
         "type": "uint256[]"
       }
     ],
     "name": "createMyBet",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "bool",
         "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "type": "bool"
       }
     ],
     "stateMutability": "nonpayable",
@@ -366,10 +402,40 @@ var abi = [
     "name": "getMyBet",
     "outputs": [
       {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      },
+      {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "winWei",
+        "type": "uint256"
+      }
+    ],
+    "name": "getWinAmountWei",
+    "outputs": [
       {
         "internalType": "uint256",
         "name": "",
@@ -384,6 +450,11 @@ var abi = [
     "inputs": [],
     "name": "playerTossCoin",
     "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
       {
         "internalType": "uint256",
         "name": "",
@@ -419,4 +490,4 @@ var abi = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-];
+]
