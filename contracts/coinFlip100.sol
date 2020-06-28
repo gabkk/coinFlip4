@@ -1,9 +1,10 @@
 //SPDX-License-Identifier: UNLICENSED
 
 import "./Ownable.sol";
-pragma solidity 0.5.12;
+import "./provableAPI_0.4.25.sol";
+pragma solidity 0.4.26;
 
-contract CoinFlip100 is Ownable{
+contract CoinFlip100 is Ownable, usingProvable{
 
     uint public BET_RANGE_MIN = 0;
     uint public BET_RANGE_MAX = 99;
@@ -59,6 +60,43 @@ contract CoinFlip100 is Ownable{
         return 0;
         //return now % (BET_RANGE_MAX+1);
     }
+
+    //Oracle >>>>>>>>>>>>>>>>>>>>
+    uint256 constant NUM_RANDOM_BYTES_REQUESTED = 1;
+    uint256 public latestNumber;
+
+    event generatedRandomNumber(uint256 randomNumber , bytes Id, bytes proof);
+    event LogNewProvableQuery(string notice);
+
+    constructor()
+      public
+    {
+      update();
+    }
+
+    function __callback(bytes memory _queryId, string memory _result, bytes memory _proof) public {
+      require(msg.sender == provable_cbAddress());
+
+      uint256 randomNumber = uint256(keccak256(abi.encodePacked(_result)))%100;
+      latestNumber = randomNumber;
+      emit generatedRandomNumber(randomNumber, _queryId, _proof);
+    }
+
+    function update()
+        payable
+        public
+    {
+        uint256 QUERY_EXECUTION_DELAY = 0;
+        uint256 GAS_FOR_CALLBACK = 200000;
+        provable_newRandomDSQuery(
+            QUERY_EXECUTION_DELAY,
+            NUM_RANDOM_BYTES_REQUESTED,
+            GAS_FOR_CALLBACK
+        );
+        emit LogNewProvableQuery("Provable query was sent, waiting for the answer..");
+    }
+
+    //Oracle <<<<<<<<<<<<<<<<<<<<<
 
 
     //Check Account Balance validity
