@@ -9,7 +9,7 @@ contract CoinFlip100 is Ownable, usingProvable{
     uint public BET_RANGE_MIN = 0;
     uint public BET_RANGE_MAX = 99;
 
-    uint CHIP_TO_WEI = 1000000000000000; //1 chips = 1 eth - Can be parametric
+    uint CHIP_TO_WEI = 10**15; //1 chips = 1 eth - Can be parametric
     uint public BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
     uint BET_WIN_RATE = 190; //Win rate = 1,9 with 2 decimals
 
@@ -23,7 +23,7 @@ contract CoinFlip100 is Ownable, usingProvable{
         uint[] betNumbers;
         uint[] betAmount;  //wei amount bet for each number
         bool waitingResult;
-        uint waitingId; //uint == 0 when not waiting for Flipped result
+        bytes32 waitingId; //uint == 0 when not waiting for Flipped result
     }
 
     //list of all activities of a player (update after finished solving each bet)
@@ -65,22 +65,39 @@ contract CoinFlip100 is Ownable, usingProvable{
     uint256 constant NUM_RANDOM_BYTES_REQUESTED = 1;
     uint256 public latestNumber;
 
-    event generatedRandomNumber(uint256 randomNumber , bytes Id, bytes proof);
+    event generatedRandomNumber(uint256 randomNumber , bytes32 Id, bytes proof);
     event LogNewProvableQuery(string notice);
+    event proofFailed(string description);
 
-    constructor()
-      public
-    {
-      update();
+    //constructor()
+    //  public
+    //{
+    //  update();
+    //}
+
+    constructor() public payable{
+        provable_setProof(proofType_Ledger);
+        _contractBalance_ += msg.value ;
     }
 
-    function __callback(bytes memory _queryId, string memory _result, bytes memory _proof) public {
-      require(msg.sender == provable_cbAddress());
 
-      uint256 randomNumber = uint256(keccak256(abi.encodePacked(_result)))%100;
-      latestNumber = randomNumber;
-      emit generatedRandomNumber(randomNumber, _queryId, _proof);
+    function __callback(bytes32 _queryId, string memory _result, bytes memory _proof) public {
+        require(msg.sender == provable_cbAddress());
+        if (
+            provable_randomDS_proofVerify__returnCode(
+                _queryId,
+                _result,
+                _proof
+            ) != 0
+        ) {
+            emit proofFailed("The proof verification failed in the callback");
+        } else {
+              uint256 randomNumber = uint256(keccak256(abi.encodePacked(_result)))%100;
+              latestNumber = randomNumber;
+              emit generatedRandomNumber(randomNumber, _queryId, _proof);
+        }
     }
+
 
     function update()
         payable
@@ -88,7 +105,8 @@ contract CoinFlip100 is Ownable, usingProvable{
     {
         uint256 QUERY_EXECUTION_DELAY = 0;
         uint256 GAS_FOR_CALLBACK = 200000;
-        provable_newRandomDSQuery(
+
+        activeBet[msg.sender].waitingId = provable_newRandomDSQuery(
             QUERY_EXECUTION_DELAY,
             NUM_RANDOM_BYTES_REQUESTED,
             GAS_FOR_CALLBACK
@@ -271,7 +289,7 @@ contract CoinFlip100 is Ownable, usingProvable{
     }
 
 
-    function getMyBet() public view returns(uint[] memory, uint[] memory,bool, uint)  {
+    function getMyBet() public view returns(uint[] memory, uint[] memory,bool, bytes32)  {
         //Data sent to front page from contract is in Chips
         return (    activeBet[msg.sender].betNumbers,
                     wei2Chip_ar(activeBet[msg.sender].betAmount), //wei
@@ -296,6 +314,8 @@ contract CoinFlip100 is Ownable, usingProvable{
         require(validPlayerBalance(), "playerTossCoin: Not valid Player Balance");
         require(activeBet[msg.sender].betNumbers.length > 0,"playerTossCoin: No bet placed, plase place the bet!");
 
+
+        //Not using oracle yet.. to be added later...
         activeBet[msg.sender].waitingResult = true;
         activeBet[msg.sender].waitingId = 1231321; //For use later
         uint result = random();
