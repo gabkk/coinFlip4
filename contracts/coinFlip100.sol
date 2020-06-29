@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 
 import "./Ownable.sol";
+//import "./provableAPI_0.4.25_simplified.sol";
 import "./provableAPI_0.4.25.sol";
 pragma solidity 0.4.26;
 
@@ -69,12 +70,6 @@ contract CoinFlip100 is Ownable, usingProvable{
     event LogNewProvableQuery(string notice);
     event proofFailed(string description);
 
-    //constructor()
-    //  public
-    //{
-    //  update();
-    //}
-
     constructor() public payable{
         provable_setProof(proofType_Ledger);
         _contractBalance_ += msg.value ;
@@ -83,19 +78,19 @@ contract CoinFlip100 is Ownable, usingProvable{
 
     function __callback(bytes32 _queryId, string memory _result, bytes memory _proof) public {
         require(msg.sender == provable_cbAddress());
-        if (
-            provable_randomDS_proofVerify__returnCode(
-                _queryId,
-                _result,
-                _proof
-            ) != 0
-        ) {
-            emit proofFailed("The proof verification failed in the callback");
-        } else {
-              uint256 randomNumber = uint256(keccak256(abi.encodePacked(_result)))%100;
-              latestNumber = randomNumber;
-              emit generatedRandomNumber(randomNumber, _queryId, _proof);
-        }
+        //if (
+        //    provable_randomDS_proofVerify__returnCode(
+        //        _queryId,
+        //        _result,
+        //        _proof
+        //    ) != 0
+        //) {
+        //    emit proofFailed("The proof verification failed in the callback");
+        //} else {
+            uint256 randomNumber = uint256(keccak256(abi.encodePacked(_result)))%100;
+            latestNumber = randomNumber;
+            emit generatedRandomNumber(randomNumber, _queryId, _proof);
+        //}
     }
 
 
@@ -242,7 +237,6 @@ contract CoinFlip100 is Ownable, usingProvable{
     }
 
     function verifyBet(uint[] memory betNumbers, uint[] memory betAmount_wei) private view returns(bool) {
-
         require (betNumbers.length == betAmount_wei.length," ERROR bet aray") ;
         uint sumBetAmount = 0;
 
@@ -251,9 +245,7 @@ contract CoinFlip100 is Ownable, usingProvable{
             require(betAmount_wei[x] >=  BET_MIN_AMOUNT_WEI, "Bet amount less than min amount");
             sumBetAmount += betAmount_wei[x];
         }
-
         require(sumBetAmount <= playerPlayableFund(), "TOO BIG BET, PLEASE ADJUST OUR BET");
-
         return true;
     }
 
@@ -317,7 +309,6 @@ contract CoinFlip100 is Ownable, usingProvable{
 
         //Not using oracle yet.. to be added later...
         activeBet[msg.sender].waitingResult = true;
-        activeBet[msg.sender].waitingId = 1231321; //For use later
         uint result = random();
 
         require(result >= BET_RANGE_MIN && result <= BET_RANGE_MAX, "playerTossCoin: Random out of range");
@@ -344,7 +335,6 @@ contract CoinFlip100 is Ownable, usingProvable{
        //Should return all players ballances before withdrawn
        _totalAllPlayerBalance_ = 0;
        _contractBalance_ = 0;
-
        msg.sender.transfer(toTransfer);
        return toTransfer;
     }
