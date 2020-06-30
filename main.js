@@ -12,7 +12,7 @@ var BET_WIN_RATE = 190
 
 var CONTRACT_INSTANCE;
 var ACTIVE_ADDRESS;
-var CONTRACT_ADDRESS = "0xcf031ECc9792583F48430b42610664E313ccF403";
+var CONTRACT_ADDRESS = "0xaf9711e7a05d40db4ac1d5160e6ed87678778265";
 var OWNER_ADDRESS = "";
 var BET_LIST_NUMBERS = [];
 var BET_LIST_AMOUNTS = []; //Amount Eth betted for 0 and 1
@@ -34,6 +34,7 @@ $(document).ready(function() {
     $("#Submit_button").click(submitBet);
     $("#PlayerWithdrawAll_button").click(PlayerWithdrawAll);
     $("#OwnerWithdrawAll_button").click(OwnerWithdrawAll);
+    $("#CheckResult_button").click(refreshDisplay);
 
     window.ethereum.on('accountsChanged', async function(accounts) {
         console.log("Account changed")
