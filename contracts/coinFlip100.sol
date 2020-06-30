@@ -1,8 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 
 import "./Ownable.sol";
-//import "./provableAPI_0.4.25_simplified.sol";
-import "./provableAPI_0.4.25.sol";
+import "./provableAPI_0.4.25_simple.sol";
 pragma solidity 0.4.26;
 
 contract CoinFlip100 is Ownable, usingProvable{
@@ -51,7 +50,7 @@ contract CoinFlip100 is Ownable, usingProvable{
     event newBetCreated(uint[] betNumbers, uint[] betAmounts_chip, address playerAddress);
 
     //betFinished emit when
-    event betFinished(uint winAmount, uint result);
+    event betFinished(address playerAddress, uint winAmount, uint result);
 
     //common notice
     event notice(string noticeString, uint noticeValue);
@@ -70,10 +69,10 @@ contract CoinFlip100 is Ownable, usingProvable{
     event LogNewProvableQuery(string notice);
     event proofFailed(string description);
 
-    constructor() public payable{
-        provable_setProof(proofType_Ledger);
-        _contractBalance_ += msg.value ;
-    }
+    //constructor() public payable{
+    //    provable_setProof(proofType_Ledger);
+    //    _contractBalance_ += msg.value ;
+    //}
 
 
     function __callback(bytes32 _queryId, string memory _result, bytes memory _proof) public {
@@ -93,11 +92,12 @@ contract CoinFlip100 is Ownable, usingProvable{
         //}
     }
 
-
-    function update()
+    function getRandom100()
         payable
         public
     {
+        require(activeBet[msg.sender].waitingResult == false, "Player is waiting for bet result from Oracle..");
+
         uint256 QUERY_EXECUTION_DELAY = 0;
         uint256 GAS_FOR_CALLBACK = 200000;
 
@@ -106,7 +106,11 @@ contract CoinFlip100 is Ownable, usingProvable{
             NUM_RANDOM_BYTES_REQUESTED,
             GAS_FOR_CALLBACK
         );
-        emit LogNewProvableQuery("Provable query was sent, waiting for the answer..");
+
+        if (activeBet[msg.sender].waitingId != 0) {
+            activeBet[msg.sender].waitingResult = true;
+            emit LogNewProvableQuery("Provable query was sent, waiting for the answer..");
+        }
     }
 
     //Oracle <<<<<<<<<<<<<<<<<<<<<
@@ -179,20 +183,21 @@ contract CoinFlip100 is Ownable, usingProvable{
         }
 
     function mySpentBalance(uint[] memory spentAmounts_wei) private {
-
         for (uint x=0; x<spentAmounts_wei.length; x++) {
             playerHistory[msg.sender].totalSpentAmount += spentAmounts_wei[x];
         }
         updateMyBalance();
     }
 
-    function myWinBalance(uint winAmount_wei) private  {
-        playerHistory[msg.sender].totalGames++;
+    function myWinBalance(address playerAddress, uint winAmount_wei) private  {
+
+        playerHistory[playerAddress].totalGames++;
         if (winAmount_wei>0) {
-            playerHistory[msg.sender].totalWinAmount += winAmount_wei;
-            playerHistory[msg.sender].totalWins += 1;
+            _contractBalance_ -= winAmount_wei;
+            playerHistory[playerAddress].totalWinAmount += winAmount_wei;
+            playerHistory[playerAddress].totalWins += 1;
         }
-        playerHistory[msg.sender].lastWinAmount = winAmount_wei;
+        playerHistory[playerAddress].lastWinAmount = winAmount_wei;
         updateMyBalance();
     }
 
@@ -290,10 +295,10 @@ contract CoinFlip100 is Ownable, usingProvable{
     }
 
 
-    function resetPlayerBetList() private {
+    function resetPlayerBetList(address playerAddress) private {
         Bets memory nullBet;
-        activeBet[msg.sender] = nullBet;
-        activeBet[msg.sender].waitingResult = false;
+        activeBet[playerAddress] = nullBet;
+        activeBet[playerAddress].waitingResult = false;
     }
 
 
@@ -301,31 +306,29 @@ contract CoinFlip100 is Ownable, usingProvable{
         return (winWei*BET_WIN_RATE)/100;
     }
 
-    function playerTossCoin() public returns(uint, uint) {
+    function playerTossCoin() public  {
 
         require(validPlayerBalance(), "playerTossCoin: Not valid Player Balance");
         require(activeBet[msg.sender].betNumbers.length > 0,"playerTossCoin: No bet placed, plase place the bet!");
+        getRandom100();
+    }
 
+    function payOut(address playerAddress, uint result) private returns(address, uint, uint) {
 
-        //Not using oracle yet.. to be added later...
-        activeBet[msg.sender].waitingResult = true;
-        uint result = random();
-
-        require(result >= BET_RANGE_MIN && result <= BET_RANGE_MAX, "playerTossCoin: Random out of range");
-
+        //require(result >= BET_RANGE_MIN && result <= BET_RANGE_MAX, "playerTossCoin: Random out of range");
         uint winAmount_wei = 0;
 
-        for (uint x=0; x<activeBet[msg.sender].betNumbers.length; x++) {
-            if (activeBet[msg.sender].betNumbers[x] == result) {
-                winAmount_wei += getWinAmountWei(activeBet[msg.sender].betAmount[x]);
+        for (uint x=0; x<activeBet[playerAddress].betNumbers.length; x++) {
+            if (activeBet[playerAddress].betNumbers[x] == result) {
+                winAmount_wei += getWinAmountWei(activeBet[playerAddress].betAmount[x]);
             }
         }
 
-        resetPlayerBetList();
-        myWinBalance(winAmount_wei);
+        resetPlayerBetList(playerAddress);
+        myWinBalance(playerAddress,winAmount_wei);
 
-        emit betFinished(winAmount_wei, result);
-        return (winAmount_wei, result);
+        emit betFinished(playerAddress, winAmount_wei, result);
+        return (playerAddress,winAmount_wei, result);
     }
 
     function ownerWithdrawAll() public onlyOwner returns(uint) {
