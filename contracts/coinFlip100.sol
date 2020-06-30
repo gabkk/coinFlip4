@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 
 import "./Ownable.sol";
-import "./provableAPI_0.4.25_simple.sol";
+import "./provableAPI_0.4.25.sol";
 pragma solidity 0.4.26;
 
 contract CoinFlip100 is Ownable, usingProvable{
