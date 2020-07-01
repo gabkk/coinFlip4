@@ -1,61 +1,130 @@
-var abi =  [
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "betAmount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "winAmount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "result",
-        "type": "uint256"
-      }
-    ],
-    "name": "betFinished",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "betChoice",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "betAmount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
-      }
-    ],
-    "name": "newBetCreated",
-    "type": "event"
-  },
+var abi = [
   {
     "constant": true,
     "inputs": [],
     "name": "_contractBalance_",
     "outputs": [
       {
-        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "playerHistory",
+    "outputs": [
+      {
+        "name": "totalBalance",
+        "type": "uint256"
+      },
+      {
+        "name": "totalTopUp",
+        "type": "uint256"
+      },
+      {
+        "name": "totalWithdrawn",
+        "type": "uint256"
+      },
+      {
+        "name": "totalSpentAmount",
+        "type": "uint256"
+      },
+      {
+        "name": "totalWinAmount",
+        "type": "uint256"
+      },
+      {
+        "name": "totalGames",
+        "type": "uint256"
+      },
+      {
+        "name": "totalWins",
+        "type": "uint256"
+      },
+      {
+        "name": "lastWinAmount",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "_totalAllPlayerBalance_",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "activeBet",
+    "outputs": [
+      {
+        "name": "waitingResult",
+        "type": "bool"
+      },
+      {
+        "name": "waitingId",
+        "type": "bytes32"
+      },
+      {
+        "name": "paidOut",
+        "type": "bool"
+      },
+      {
+        "name": "lastResult",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "_latestNumber",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "BET_RANGE_MIN",
+    "outputs": [
+      {
         "name": "",
         "type": "uint256"
       }
@@ -70,7 +139,6 @@ var abi =  [
     "name": "owner",
     "outputs": [
       {
-        "internalType": "address",
         "name": "",
         "type": "address"
       }
@@ -81,48 +149,11 @@ var abi =  [
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "playerHistory",
+    "inputs": [],
+    "name": "_lockedInBets_",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "totalBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalTopUp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalSpentAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalWinAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalGames",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalWins",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "lastWinAmount",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -131,9 +162,191 @@ var abi =  [
     "type": "function"
   },
   {
-    "constant": false,
+    "constant": true,
     "inputs": [],
-    "name": "topUp",
+    "name": "BET_RANGE_MAX",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "BET_MIN_AMOUNT_WEI",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "betNumbers",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "name": "betAmounts_chip",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "name": "playerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "newBetCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "playerAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "winAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "result",
+        "type": "uint256"
+      }
+    ],
+    "name": "betFinished",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "noticeString",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "name": "noticeValue",
+        "type": "uint256"
+      }
+    ],
+    "name": "notice",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "Id",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "name": "randomNumber",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "proof",
+        "type": "bytes"
+      }
+    ],
+    "name": "generatedRandomNumber",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "notice",
+        "type": "string"
+      }
+    ],
+    "name": "LogNewProvableQuery",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "description",
+        "type": "string"
+      }
+    ],
+    "name": "proofFailed",
+    "type": "event"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_queryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_result",
+        "type": "string"
+      },
+      {
+        "name": "_proof",
+        "type": "bytes"
+      }
+    ],
+    "name": "__callback",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "topUp_chip",
+        "type": "uint256"
+      }
+    ],
+    "name": "ownerFundUp_chip",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "topUp_chip",
+        "type": "uint256"
+      }
+    ],
+    "name": "playerTopUp_chip",
     "outputs": [],
     "payable": true,
     "stateMutability": "payable",
@@ -142,10 +355,37 @@ var abi =  [
   {
     "constant": true,
     "inputs": [],
-    "name": "balance",
+    "name": "getPlayerHistory",
     "outputs": [
       {
-        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
         "name": "",
         "type": "uint256"
       }
@@ -156,47 +396,66 @@ var abi =  [
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
-      }
-    ],
-    "name": "playerReport",
+    "inputs": [],
+    "name": "realContractBalance",
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getContractBalance",
+    "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "get_totalAllPlayerBalance_",
+    "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "get_ownerBalance",
+    "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "playerPlayableFund",
+    "outputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
       }
@@ -209,38 +468,21 @@ var abi =  [
     "constant": false,
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "betChoice",
-        "type": "uint256"
-      }
-    ],
-    "name": "createBet",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "betChoice",
-        "type": "uint256"
+        "name": "betNumbers",
+        "type": "uint256[]"
       },
       {
-        "internalType": "uint256",
-        "name": "betAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
+        "name": "betAmount_chip",
+        "type": "uint256[]"
       }
     ],
-    "name": "createBetForPlayer",
-    "outputs": [],
+    "name": "createMyBet",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
@@ -251,14 +493,28 @@ var abi =  [
     "name": "getMyBet",
     "outputs": [
       {
-        "internalType": "uint256[]",
         "name": "",
         "type": "uint256[]"
       },
       {
-        "internalType": "uint256[]",
         "name": "",
         "type": "uint256[]"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -269,22 +525,15 @@ var abi =  [
     "constant": true,
     "inputs": [
       {
-        "internalType": "address",
-        "name": "playerAddress",
-        "type": "address"
+        "name": "podWei",
+        "type": "uint256"
       }
     ],
-    "name": "getPlayerBet",
+    "name": "get_betAbleAmountWei",
     "outputs": [
       {
-        "internalType": "uint256[]",
         "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -293,31 +542,15 @@ var abi =  [
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "getMyHistory",
+    "inputs": [
+      {
+        "name": "winWei",
+        "type": "uint256"
+      }
+    ],
+    "name": "getWinAmountWei",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
       }
@@ -329,7 +562,26 @@ var abi =  [
   {
     "constant": false,
     "inputs": [],
-    "name": "tossCoin",
+    "name": "playerTossCoin",
+    "outputs": [
+      {
+        "name": "waitingId",
+        "type": "bytes32"
+      }
+    ],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "playerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "payOutCheckRequest",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -337,27 +589,24 @@ var abi =  [
   },
   {
     "constant": false,
-    "inputs": [
-      {
-        "internalType": "address payable",
-        "name": "playerAddress",
-        "type": "address"
-      }
-    ],
-    "name": "playerTossCoin",
+    "inputs": [],
+    "name": "ownerWithdrawAll",
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "playerWithdrawAll",
+    "outputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
         "name": "",
         "type": "uint256"
       }

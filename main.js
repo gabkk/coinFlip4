@@ -1,50 +1,89 @@
+
+//web3.setProvider(new Web3.providers.WebsocketProvider('ws://localhost:8546'));
 var web3 = new Web3(Web3.givenProvider);
-var contractInstance;
-var playerAddress;
 
-var contractAddress = "0x35f2384FC9ccA11c924Fb7157eF90Bfd7d5a65AD";
+// CONTRACT VARIABLES - should be sync with COntract values
+var BET_RANGE_MIN = 0;
+var BET_RANGE_MAX = 99;
+var CHIP_TO_WEI = 10**15; //1 chips = 1 eth - Can be parametric
+var CHIP_TO_ETH = CHIP_TO_WEI/10**18;
+var BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
+var BET_WIN_RATE = 190
 
-// Is there is an injected web3 instance?
-if (typeof web3 !== 'undefined') {
-  //App.web3Provider = web3.currentProvider;
-  web3 = new Web3(web3.currentProvider);
-} else {
-  // If no injected web3 instance is detected, fallback to Ganache.
-  //App.web3Provider = new web3.providers.HttpProvider('http://127.0.0.1:7545');
-  web3 = new Web3(App.web3Provider);
-}
+var CONTRACT_INSTANCE;
+var _contract_instance;
+var ACTIVE_ADDRESS;
+var CONTRACT_ADDRESS = "0x3fccba31735f047ff3eba443cab828627da39b6a";
+var OWNER_ADDRESS = "";
+var BET_LIST_NUMBERS = [];
+var BET_LIST_AMOUNTS = []; //Amount Eth betted for 0 and 1
+var BETTING_LOCKED;
 
 $(document).ready(function() {
     window.ethereum.enable().then(async function(accounts){
-      await fetchAccountInfo()
-      contractInstance = new web3.eth.Contract(window.abi, contractAddress , {from: playerAddress});
-      console.log("contractInstance :",contractInstance);
+      await getActiveAddress()
+      CONTRACT_INSTANCE = await new web3.eth.Contract(window.abi, CONTRACT_ADDRESS , {gas:1000000, from: ACTIVE_ADDRESS});
+      console.log("CONTRACT_INSTANCE :",CONTRACT_INSTANCE);
 
-      //get and display Player's balance
-      let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
-      console.log(playerBalanceNow)
-      displayPlayerBalanceInfo(playerBalanceNow)
+      initEventListeners();
+      refreshDisplay();
     });
-    $("#place_bet1_button").click(placeBet1);
-    $("#place_bet0_button").click(placeBet0);
-    $("#play_button").click(flipNow);
-    $("#topUp_button").click(topUpNow);
+
+    $("#add_bet_button").click(addBet);
+    $("#cancel_all_button").click(cancelBet);
+    $("#Play_button").click(flipNow);
+    $("#topUp_button").click(playerTopUp_eth);
+    $("#FundUp_button").click(ownerFundUp_eth);
+    $("#Submit_button").click(submitBet);
+    $("#PlayerWithdrawAll_button").click(PlayerWithdrawAll);
+    $("#OwnerWithdrawAll_button").click(OwnerWithdrawAll);
+    $("#CheckResult_button").click(checkResult);
+
+    window.ethereum.on('accountsChanged', async function(accounts) {
+        console.log("Account changed")
+        refreshDisplay();
+    });
 });
 
-function weiToEther(balance) {
-    return window.web3.utils.fromWei(balance, "ether") + " ETH"
+async function initEventListeners() {
+    latestBlock = await web3.eth.getBlockNumber();
+    console.log("LATEST BLOCK NO :",latestBlock);
+
+    CONTRACT_INSTANCE.events.notice({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("Notice event received: "+event.returnValues[0]+event.returnValues[1].toString())
+          console.log(event.returnValues[0])
+          console.log(event.returnValues[1]) });
+
+    CONTRACT_INSTANCE.events.LogNewProvableQuery({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("LogNewProvableQuery: "+event.returnValues[0])
+          console.log(event.returnValues[0])
+        });
+
+    CONTRACT_INSTANCE.events.betFinished({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("betFinished: "+event.returnValues[0] +event.returnValues[1] +event.returnValues[2])
+          console.log(event.returnValues[0],"|",event.returnValues[1],"|",event.returnValues[2])
+        });
+
+    CONTRACT_INSTANCE.events.generatedRandomNumber({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("generatedRandomNumber: "+event.returnValues[0] +event.returnValues[1] +event.returnValues[2])
+          console.log(event.returnValues[0],"|",event.returnValues[1],"|",event.returnValues[2])
+        });
+
+    CONTRACT_INSTANCE.events.newBetCreated({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("newBetCreated: "+event.returnValues[0] +event.returnValues[1] +event.returnValues[2])
+          console.log(event.returnValues[0],"|",event.returnValues[1],"|",event.returnValues[2])
+        });
 }
 
-async function topUpNow() {
-    var topUpAmount = $("#topUp_input").val();
-
-    var config = {value: web3.utils.toWei(topUpAmount, "ether"),
-                  gas:100000,
-                  from: playerAddress}; // Should return later for player at the end of game
-
-    console.log("Top Up amount:",typeof(topUpAmount),topUpAmount)
-
-    await contractInstance.methods.topUp().send(config)
+async function checkResult() {
+  console.log("Sending check result request...")
+  await CONTRACT_INSTANCE.methods.payOutCheckRequest(ACTIVE_ADDRESS)
+      .send({gas:1000000, from: ACTIVE_ADDRESS})
       .on('transactionHash', function(hash){
         console.log("tx hash :",hash);
       })
@@ -53,134 +92,292 @@ async function topUpNow() {
       })
       .on('receipt', function(receipt){
         console.log("receipt: ",receipt);
-      });
+        refreshDisplay();
+      })
+}
 
-    let playerBalanceNow = await contractInstance.methods.playerReport(playerAddress).call({gas:100000});
-    console.log(playerBalanceNow)
-    displayPlayerBalanceInfo(playerBalanceNow)
+
+function cancelBet() {
+    BET_LIST_NUMBERS = []
+    BET_LIST_AMOUNTS = []
+    console.log("BETTING_LOCKED ",BETTING_LOCKED)
+    refreshLocalBetList()
+}
+
+function validBetNumber(_num) {
+  num = parseFloat(_num)
+
+  if ((num < BET_RANGE_MIN) || (num > BET_RANGE_MAX)) {
+    alert("bet number out of range")
+    return false
+  }
+
+  if (num != Math.round(num)) {
+    alert("bet number should be interger from ",BET_RANGE_MIN," to ",BET_RANGE_MAX)
+    return false
+  }
+  return true
+}
+
+function validBetAmount(_num) { //chips
+  num = parseFloat(_num)
+
+  if (num < 1) {
+    alert(" bet amount shold be interger and higher 0 ")
+    return false
+  }
+
+  if (num != Math.round(num)) {
+    alert(" bet amount shold be interger and higher 0 ")
+    return false
+  }
+  return true
+}
+
+function addBet() {
+  var betAmount_chip = $("#betAmount_input").val();
+  var betNumber = $("#betNumber_input").val();
+
+  if (validBetNumber(betNumber) && validBetAmount(betAmount_chip) ){
+    BET_LIST_NUMBERS.push(betNumber)
+    BET_LIST_AMOUNTS.push(parseInt(betAmount_chip))
+  }
+  refreshDisplay()
+}
+
+async function submitBet() { //This will place bet to Contract
+      //If more than 2 choices => Should send all choices in one Call;
+      //For later upgradability to multi choices, will send both 1 and 0 bets..
+      //Later will Merge Place Bet and Toss Coin into One Function call
+
+      await getActiveAddress()
+
+      console.log("Button clicked -> Place New Bet to blockchain...")
+      console.log("Bet Numbers:",BET_LIST_NUMBERS)
+      console.log("Bet Amounts:",BET_LIST_AMOUNTS)
+
+      await CONTRACT_INSTANCE.methods.createMyBet(BET_LIST_NUMBERS, BET_LIST_AMOUNTS) //Does Solidity accept Array as input?
+        .send({gas:1000000, from: ACTIVE_ADDRESS})
+        .on('transactionHash', function(hash){
+          console.log("tx hash :",hash);
+          lockBetting();
+        })
+        .on('confirmation', function(confirmationNumber, receipt){
+            console.log("confirmation Number:",confirmationNumber);
+        })
+        .on('receipt', async function(receipt){
+          console.log("receipt: ",receipt);
+          await refreshDisplay();
+          console.log("PRESS FLIP TO TOSS COIN AND GET RESULT....");
+          cancelBet()
+        })
 };
 
-function displayPlayerBalanceInfo(playerBalanceNow) {
-    $("#Player_totalBalance").text(weiToEther(playerBalanceNow[0]));
-    $("#Player_totalTopUp").text(weiToEther(playerBalanceNow[1]));
-    $("#Player_totalSpentAmount").text(weiToEther(playerBalanceNow[2]));
-    $("#Player_totalWinAmount").text(weiToEther(playerBalanceNow[3]));
-    $("#Player_totalGames").text(playerBalanceNow[4]);
-    $("#Player_totalWins").text(playerBalanceNow[5]);
-    $("#Player_lastWinAmount").text(weiToEther(playerBalanceNow[6]));
-  };
 
-async function fetchAccountInfo () {
-    console.log("* * * fetchAccountInfo * * *")
-    console.log("Before fetchAccountInfo playerAddress = ",playerAddress)
-    let accounts = await window.web3.eth.getAccounts();
-    playerAddress = accounts[0];
-
-    $('#Player_address').text(playerAddress);
-    console.log("Player Account =",playerAddress)
-
-    let balance = await window.web3.eth.getBalance(playerAddress);
-    console.log("Player Balance =",window.web3.utils.fromWei(balance, "ether") + " ETH")
-    $('#Player_balance').text(window.web3.utils.fromWei(balance, "ether") + " ETH");
-
-    let contract_balance = await window.web3.eth.getBalance(contractAddress);
-    console.log('#Contract_balance', window.web3.utils.fromWei(contract_balance, "ether") + " ETH")
-    $('#Contract_balance').text(window.web3.utils.fromWei(contract_balance, "ether") + " ETH");
-
-    console.log('#Contract_address', contractAddress)
-    $('#Contract_address').text(contractAddress);
-    console.log("After fetchAccountInfo playerAddress = ",playerAddress)
+function lockBetting() {
+  BETTING_LOCKED = true;
 }
 
-function placeBet1() {
-  placeBet(1)
+function openBetting() {
+  BETTING_LOCKED = false;
 }
 
-function placeBet0() {
-  placeBet(0)
+async function OwnerWithdrawAll() {
+  console.log("Sending owner's withdraw all request...")
+  await CONTRACT_INSTANCE.methods.ownerWithdrawAll()
+      .send({gas:1000000, from: ACTIVE_ADDRESS})
+      .on('transactionHash', function(hash){
+        console.log("tx hash :",hash);
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+          console.log("confirmation Number:",confirmationNumber);
+          OWNER_ADDRESS = ACTIVE_ADDRESS; //Only Owner is allowed to WITHDRAW
+      })
+      .on('receipt', function(receipt){
+        console.log("receipt: ",receipt);
+        refreshDisplay();
+      })
 }
 
-async function placeBet(betChoice) {
-  var betAmountEth = $("#betAmount_input").val();
-  betAmount = parseInt(window.web3.utils.toWei(betAmountEth, "ether"));
+async function PlayerWithdrawAll() {
+  console.log("Sending owner's withdraw all request...")
+  await CONTRACT_INSTANCE.methods.playerWithdrawAll()
+      .send({gas:1000000, from: ACTIVE_ADDRESS})
+      .on('transactionHash', function(hash){
+        console.log("tx hash :",hash);
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+          console.log("confirmation Number:",confirmationNumber);
+      })
+      .on('receipt', function(receipt){
+        console.log("receipt: ",receipt);
+        refreshDisplay();
+      })
+}
 
-  if (betAmount <= 1000) {
-        alert("Not valid coin amount!");
-        return;
+function weiToEther(balance) {
+    return web3.utils.fromWei(balance, "ether") + " ETH"
+}
+
+function chipToWei(chip) {
+  return (CHIP_TO_WEI * chip)
+}
+
+async function ownerFundUp_eth() {
+    var fundUpAmount_eth = $("#FundUp_input").val();
+    await getActiveAddress()
+    var config = {value: web3.utils.toWei(fundUpAmount_eth.toString(), "ether"),
+                  gas:1000000, from: ACTIVE_ADDRESS}; // Should return later for player at the end of game
+
+    console.log("Fund Up amount:",typeof(fundUpAmount_eth),fundUpAmount_eth)
+
+    fundUpAmount_chip = fundUpAmount_eth / CHIP_TO_ETH
+    await CONTRACT_INSTANCE.methods.ownerFundUp_chip(fundUpAmount_chip).send(config)
+      .on('transactionHash', function(hash){
+        console.log("tx hash :",hash);
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+          console.log("confirmation Number:",confirmationNumber);
+          OWNER_ADDRESS = ACTIVE_ADDRESS; //Only Owner is allowed to fund up
+      })
+      .on('receipt', function(receipt){
+        console.log("receipt: ",receipt);
+        refreshDisplay();
+      })
+};
+
+async function playerTopUp_eth() {
+    var topUpAmount_eth = $("#topUp_input").val();
+    await getActiveAddress()
+    var config = {value: web3.utils.toWei(topUpAmount_eth.toString(), "ether"),
+                  gas:1000000,
+                  from: ACTIVE_ADDRESS}; // Should return later for player at the end of game
+
+    console.log("Top Up amount:",typeof(topUpAmount_eth),topUpAmount_eth)
+
+    topUpAmount_chip = topUpAmount_eth/CHIP_TO_ETH
+    await CONTRACT_INSTANCE.methods.playerTopUp_chip(topUpAmount_chip).send(config)
+      .on('transactionHash', function(hash){
+        console.log("tx hash :",hash);
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+          console.log("confirmation Number:",confirmationNumber);
+      })
+      .on('receipt', function(receipt){
+        console.log("receipt: ",receipt);
+        refreshDisplay();
+      })
+};
+
+async function refreshDisplay() {
+  console.log("===== refreshDisplay =====")
+  await getActiveAddress()
+
+  refreshOnChainBetInfo()
+
+  refreshPlayerInfo()
+
+  refreshLocalBetList()
+
+  refreshOwnerInfo()
+}
+
+async function getActiveAddress() {
+    console.log("* * * getActiveAddress * * *")
+    console.log("Before getActiveAddress ACTIVE_ADDRESS = ",ACTIVE_ADDRESS)
+    let accounts = await web3.eth.getAccounts();
+    console.log("After getActiveAddress ACTIVE_ADDRESS = ",ACTIVE_ADDRESS)
+    ACTIVE_ADDRESS = accounts[0];
+}
+
+async function refreshOwnerInfo() {
+    if (OWNER_ADDRESS!= "" ) {
+      owner_balance = await web3.eth.getBalance(OWNER_ADDRESS);
+      $("#Owner_address").text(OWNER_ADDRESS);
+      $("#Owner_balance").text(weiToEther(owner_balance));
+    }
+    contract_balance = await web3.eth.getBalance(CONTRACT_ADDRESS);
+    $('#Contract_balance').text(web3.utils.fromWei(contract_balance, "ether") + " ETH");
+    $('#Contract_address').text(CONTRACT_ADDRESS);
+}
+
+async function refreshPlayerInfo(){
+
+      betHistory = await CONTRACT_INSTANCE.methods.getPlayerHistory().call({gas:1000000, from: ACTIVE_ADDRESS});
+      balance = await web3.eth.getBalance(ACTIVE_ADDRESS);
+
+      $('#Player_address').text(ACTIVE_ADDRESS);
+      $('#Player_balance').text(web3.utils.fromWei(balance, "ether") + " ETH");
+      $("#Player_totalBalance").text(weiToEther(betHistory[0]));
+      $("#Player_totalTopUp").text(weiToEther(betHistory[1]));
+      $("#Player_totalWithdrawn").text(weiToEther(betHistory[2]));
+      $("#Player_totalSpentAmount").text(weiToEther(betHistory[3]));
+      $("#Player_totalWinAmount").text(weiToEther(betHistory[4]));
+      $("#Player_totalGames").text(betHistory[5]);
+      $("#Player_totalWins").text(betHistory[6]);
+      $("#Player_lastWinAmount").text(weiToEther(betHistory[7]));
+}
+
+function weiToEth_ar(wei_ar) {
+      eth_ar = []
+      for (x=0; x<wei_ar.length; x++) {
+        eth_ar.push(web3.utils.fromWei(wei_ar[x].toString(),"ether"))
       }
-
-  await fetchAccountInfo()
-
-  console.log("Button clicked -> Place Bet ",typeof(betChoice),betChoice)
-  console.log("BetAmount:",typeof(betAmount),betAmount)
-
-  await contractInstance.methods
-    .createBetForPlayer(betChoice, betAmount, playerAddress)
-    .call({gas:100000, from: contractAddress})
-    /*
-    .on('transactionHash', function(hash){
-      console.log("tx hash :",hash);
-    })
-    .on('confirmation', function(confirmationNumber, receipt){
-        console.log("confirmation Number:",confirmationNumber);
-    })
-    .on('receipt', function(receipt){
-      console.log("receipt: ",receipt);
-    })
-    */
-
-  await fetchAccountInfo()
-
-  console.log("Now calling getMyBet...")
-
-  betHistory = await contractInstance.methods
-        .getPlayerBet(playerAddress)
-        .call({gas:100000})
-
-  console.log("Bet history:",betHistory)
-  displayBetInfo(betHistory);
+      return eth_ar
 }
+
+async function refreshOnChainBetInfo() {
+
+      //get bet List from contract
+      console.log("Now calling getMyBet...")
+      betList = await CONTRACT_INSTANCE.methods.getMyBet().call({gas:1000000, from: ACTIVE_ADDRESS});
+
+      ONCHAIN_BET_LIST_NUMBERS = betList[0]
+      ONCHAIN_BET_LIST_AMOUNTS = betList[1]
+      BETTING_LOCKED = betList[2]
+      //BETTING ID= betList[3]
+
+      console.log("...updating on chain bet status =",betList)
+      console.log("On Chain Bet Numbers: ",ONCHAIN_BET_LIST_NUMBERS)
+      console.log("On Chain Bet Amounts(chips): ",ONCHAIN_BET_LIST_AMOUNTS)
+
+      $("#onchain_betNumbers_output").text(ONCHAIN_BET_LIST_NUMBERS);
+      $("#onchain_betAmounts_output").text(ONCHAIN_BET_LIST_AMOUNTS);
+}
+
+
+function refreshLocalBetList() {
+    console.log("...updating bet status =")
+    console.log("Bet NUMBERS",BET_LIST_NUMBERS)
+    console.log("Bet AMOUNTS",BET_LIST_AMOUNTS,"(chips)")
+    if (!BETTING_LOCKED) {
+      $("#betNumbers_output").text(BET_LIST_NUMBERS);
+      $("#betAmounts_output").text(BET_LIST_AMOUNTS,"(chips)");
+    }
+
+    $("#chip_to_ether").text(CHIP_TO_ETH.toString()+" ETH");
+}
+
 
 async function flipNow(){
+      await refreshDisplay()
+
       console.log("... Calling Flip Contract..");
-
-      result = await contractInstance.methods.playerTossCoin(playerAddress)
-            //.call({from: contractAddress, gas: 100000})
-            .call()
-
+      result = await CONTRACT_INSTANCE.methods.playerTossCoin()
+            //.call({from: CONTRACT_ADDRESS, gas: 100000})
+            .send({gas:1000000, from: ACTIVE_ADDRESS})
+            .on('transactionHash', function(hash){
+              console.log("tx hash :",hash);
+              lockBetting();
+            })
+            .on('confirmation', function(confirmationNumber, receipt){
+                console.log("confirmation Number:",confirmationNumber);
+            })
+            .on('receipt', async function(receipt){
+              console.log("receipt: ",receipt);
+            })
       console.log("Bet result:",result)
-
-      await fetchAccountInfo()
-
-      betHistory =  await contractInstance.methods
-            .getPlayerBet(playerAddress)
-            .call({gas:100000, from: playerAddress})
-
-      displayBetInfo(betHistory);
-}
-
-function displayBetInfo(betHistory){
-  betChoice_ar = betHistory[0]
-  betAmount_ar = betHistory[1]
-  console.log("...updating bet status...")
-  console.log("Bet array: ",betChoice_ar)
-  console.log("Bet amount array: ",betAmount_ar)
-  var betAmount = [0,0]
-  for (x=0; x<betChoice_ar.length; x++) {
-    if (betChoice_ar[x]=="1") {
-      betAmount[1] += parseInt(betAmount_ar[x])
-    }
-    else if (betChoice_ar[x]=="0") {
-      betAmount[0] += parseInt(betAmount_ar[x])
-    }
-  }
-  console.log("typeof(betAmount[1]) =",typeof(betAmount[1]))
-  betAmount[1] = window.web3.utils.fromWei(betAmount[1].toString(), "ether")
-  betAmount[0] = window.web3.utils.fromWei(betAmount[0].toString(), "ether")
-  betAmount[1] = betAmount[1].toString()+" ETH"
-  betAmount[0] = betAmount[0].toString()+" ETH"
-  console.log("typeof(betAmount[1]) =",typeof(betAmount[1]))
-  $("#betAmount1_output").text(betAmount[1]);
-  $("#betAmount0_output").text(betAmount[0]);
+      await refreshDisplay() //Update all data
+      openBetting();
 
 }

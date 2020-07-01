@@ -27,11 +27,19 @@
       <div>
 
       <div>
+                <div class="input-group mb-3">
+                  <input type="number" class="form-control" id="FundUp_input" placeholder="Fund_up_ETH_amount" >
+                  <button type="button" id="FundUp_button" class="btn btn-primary" > Owner Fund Up </button>
+                </div>
+      </div>
+
+      <div>
         <div class="input-group mb-3">
-          <input type="text" class="form-control" id="topUp_input" placeholder="topUpAmount" >
-          <button type="button" id="topUp_button" class="btn btn-primary" > Top Up </button>
+          <input type="number" class="form-control" id="topUp_input" placeholder="Top_up_ETH_amount" >
+          <button type="button" id="topUp_button" class="btn btn-primary" > Player Top Up </button>
         </div>
       </div>
+
       <div>
           <h2>Player's account</h2>
           <div>
@@ -41,17 +49,15 @@
           Player total topUp: <span id="Player_totalTopUp"></span>
           </div>
           <div>
+          Player total withdrawn: <span id="Player_totalWithdrawn"></span>
+          </div>
+          <div>
           Player total Spent Amount: <span id="Player_totalSpentAmount"></span>
           </div>
           <div>
           Player total Win Amount: <span id="Player_totalWinAmount"></span>
           </div>
-          <div>
-          Player total games: <span id="Player_totalGames"></span>
-          </div>
-          <div>
-          Player total wins: <span id="Player_totalWins"></span>
-          </div>
+
           <div>
           Player last win amount: <span id="Player_lastWinAmount"></span>
           </div>
@@ -60,22 +66,61 @@
       <div>
 
         <h2>Place bet amount</h2>
-        <div class="input-group mb-3">
-          <input type="text" class="form-control" id="betAmount_input" placeholder="betAmount" >
+        <div>
+        1 betting unit equals: <span id="chip_to_ether"></span>
         </div>
-        <div class="input-group mb-3">
-          <button type="button" id="place_bet1_button" class="btn btn-primary" > Head </button>
-          <button type="button" id="place_bet0_button" class="btn btn-primary" > Tail </button>
+        <div class = "input-group mb-3">
+          <input type = "number" class="form-control" id="betNumber_input" placeholder="betNumber" >
+          <input type = "number" class="form-control" id="betAmount_input" placeholder="betAmount" >
+        </div>
+        <div class = "input-group mb-3">
+          <button type="button" id="add_bet_button" class="btn btn-primary" > Add to bet list </button>
+          <button type="button" id="cancel_all_button" class="btn btn-primary" > Cancel bet list </button>
         </div>
       </div>
 
       <div>
-        <h2>Placed bets: </h2>
         <div>
-          Bet amount for Head: <span id="betAmount1_output"></span>
+          Bet numbers list: <span id="betNumbers_output"></span>
         </div>
         <div>
-          Bet amount for Tail: <span id="betAmount0_output"></span>
+          Bet amounts list: <span id="betAmounts_output"></span>
+        </div>
+
+        <div>
+          Contract Address: <span id="Contract_address"></span>
+        </div>
+        <div>
+          Contract Balance: <span id="Contract_balance"></span>
+        </div>
+        <div>
+        <button type="button" id="Submit_button" class="btn btn-primary"> SUBMIT BETS </button>
+        </div>
+        <div>
+        On chain bet Numbers: <span id="onchain_betNumbers_output"></span>
+        </div>
+        <div>
+        On chain bet Amounts (chips): <span id="onchain_betAmounts_output"></span>
+        </div>
+
+    </div>
+
+    <div>
+        <div>
+        <button type="button" id="Play_button" class="btn btn-primary"> LET'S FLIP !!!</button>
+        <button type="button" id="CheckResult_button" class="btn btn-primary"> CHECK RESULT (99) </button>
+        </div>
+        <div>
+        Player total games: <span id="Player_totalGames"></span>
+        </div>
+        <div>
+        Player total wins: <span id="Player_totalWins"></span>
+        </div>
+    </div>
+
+    <div>
+        <div>
+        <button type="button" id="PlayerWithdrawAll_button" class="btn btn-primary"> PLAYER WITHDRAW ALL </button>
         </div>
         <div>
           Player Address: <span id="Player_address"></span>
@@ -83,14 +128,18 @@
         <div>
           Player Balance: <span id="Player_balance"></span>
         </div>
+    </div>
+
+    <div>
         <div>
-          Contract Address: <span id="Contract_address"></span>
+        <button type="button" id="OwnerWithdrawAll_button" class="btn btn-primary"> OWNER WITHDRAW ALL </button>
         </div>
         <div>
-          Contract Balance: <span id="Contract_balance"></span>
+          Owner Address: <span id="Owner_address"></span>
         </div>
-        <button type="button" id="play_button" class="btn btn-primary"> LET'S FLIP !!!</button>
-      </div>
+        <div>
+          Owner Balance: <span id="Owner_balance"></span>
+        </div>
     </div>
 
   </body>
