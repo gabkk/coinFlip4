@@ -1,4 +1,4 @@
-var abi =  [
+var abi = [
   {
     "constant": true,
     "inputs": [],
@@ -108,6 +108,20 @@ var abi =  [
   {
     "constant": true,
     "inputs": [],
+    "name": "_latestNumber",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "BET_RANGE_MIN",
     "outputs": [
       {
@@ -136,7 +150,7 @@ var abi =  [
   {
     "constant": true,
     "inputs": [],
-    "name": "latestNumber",
+    "name": "_lockedInBets_",
     "outputs": [
       {
         "name": "",
@@ -174,6 +188,12 @@ var abi =  [
     "payable": false,
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "constructor"
   },
   {
     "anonymous": false,
@@ -241,11 +261,6 @@ var abi =  [
     "inputs": [
       {
         "indexed": false,
-        "name": "playerAddress",
-        "type": "address"
-      },
-      {
-        "indexed": false,
         "name": "Id",
         "type": "bytes32"
       },
@@ -288,20 +303,6 @@ var abi =  [
     "type": "event"
   },
   {
-    "constant": true,
-    "inputs": [],
-    "name": "random",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
     "constant": false,
     "inputs": [
       {
@@ -321,15 +322,6 @@ var abi =  [
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [],
-    "name": "getRandom100",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -405,6 +397,20 @@ var abi =  [
   {
     "constant": true,
     "inputs": [],
+    "name": "realContractBalance",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "getContractBalance",
     "outputs": [
       {
@@ -433,7 +439,7 @@ var abi =  [
   {
     "constant": true,
     "inputs": [],
-    "name": "contractPlayableFund",
+    "name": "get_ownerBalance",
     "outputs": [
       {
         "name": "",
@@ -501,6 +507,33 @@ var abi =  [
       {
         "name": "",
         "type": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "podWei",
+        "type": "uint256"
+      }
+    ],
+    "name": "get_betAbleAmountWei",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -530,6 +563,25 @@ var abi =  [
     "constant": false,
     "inputs": [],
     "name": "playerTossCoin",
+    "outputs": [
+      {
+        "name": "waitingId",
+        "type": "bytes32"
+      }
+    ],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "playerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "payOutCheckRequest",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",

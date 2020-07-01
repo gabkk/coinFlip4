@@ -11,11 +11,13 @@ contract CoinFlip100 is Ownable, usingProvable{
 
     uint CHIP_TO_WEI = 10**15; //1 chips = 1 eth - Can be parametric
     uint public BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
-    uint BET_WIN_RATE = 190; //Win rate = 1,9 with 2 decimals
+    uint BET_WIN_RATE = 7000; //Win rate = 70x with 2 decimals
 
     uint public _contractBalance_;
-    uint public _totalAllPlayerBalance_;
-    uint public _latestNumber;
+    uint public _totalAllPlayerBalance_; // Total balance deposited and not used by players (not locked in bets) can be withdrawn by players any time
+    uint public _lockedInBets_;  // Total amount locked in bets (can not be widthdraw by any one)
+
+    uint public _latestNumber; // latest random number returned by Oracle engine
 
     // status of active bets; Each player can have multiple bets before each flip
     //Update each time player submited new bet
@@ -41,6 +43,10 @@ contract CoinFlip100 is Ownable, usingProvable{
         uint lastWinAmount;
     }
 
+    struct betMarket {
+        uint confirmed; // When owners fund is enough, number il be confirmed
+        uint waiting; // when fund is NOT enouugh, number will placed on waiting quee
+    }
     //betList is a list of all active bets
     // Should limit storage size somehow to avoid everflow in future?
     mapping (address => Bets) public activeBet;
@@ -52,6 +58,10 @@ contract CoinFlip100 is Ownable, usingProvable{
     //each queryId map with one address
     mapping (bytes32 => address) private playersQuery;
 
+    //each number has a total bet amount
+    mapping (uint => betMarket) betAmountForNumber; //in wei // for all players combined
+    uint _maxBetedNumber_; //Number for wich highest amount beted
+
     //newBetCreated emit when created and not finished
     event newBetCreated(uint[] betNumbers, uint[] betAmounts_chip, address playerAddress);
 
@@ -61,11 +71,7 @@ contract CoinFlip100 is Ownable, usingProvable{
     //common notice
     event notice(string noticeString, uint noticeValue);
 
-    //Pseudo Random
-    function random() private pure returns(uint) {
-        return 0;
-        //return now % (BET_RANGE_MAX+1);
-    }
+
 
     //Oracle >>>>>>>>>>>>>>>>>>>>
     uint256 constant NUM_RANDOM_BYTES_REQUESTED = 1;
@@ -74,10 +80,11 @@ contract CoinFlip100 is Ownable, usingProvable{
     event LogNewProvableQuery(string notice);
     event proofFailed(string description);
 
-    //constructor() public {
-        //provable_setProof(proofType_Ledger);
-        //_contractBalance_ += msg.value ;
-    //}
+    constructor() public payable {
+        provable_setProof(proofType_Ledger);
+        _contractBalance_ = msg.value ;
+
+    }
 
 
     function __callback(bytes32 _queryId, string memory _result, bytes memory _proof) public {
@@ -95,7 +102,9 @@ contract CoinFlip100 is Ownable, usingProvable{
 
             uint256 randomNumber = 99;
             _latestNumber = randomNumber;
-            payOut(_queryId, randomNumber, _proof);
+            address playerAddress = playersQuery[_queryId];
+            activeBet[playerAddress].lastResult = randomNumber;
+            //payOut(_queryId, randomNumber, _proof);
             emit generatedRandomNumber(_queryId, randomNumber, _proof);
         //}
     }
@@ -188,6 +197,7 @@ contract CoinFlip100 is Ownable, usingProvable{
         _totalAllPlayerBalance_ += playerHistory[playerAddress].totalBalance;
         }
 
+
     function mySpentBalance(uint[] memory spentAmounts_wei) private {
         for (uint x=0; x<spentAmounts_wei.length; x++) {
             playerHistory[msg.sender].totalSpentAmount += spentAmounts_wei[x];
@@ -196,10 +206,8 @@ contract CoinFlip100 is Ownable, usingProvable{
     }
 
     function myWinBalance(address playerAddress, uint winAmount_wei) private  {
-
         playerHistory[playerAddress].totalGames++;
         if (winAmount_wei>0) {
-            _contractBalance_ -= winAmount_wei;
             playerHistory[playerAddress].totalWinAmount += winAmount_wei;
             playerHistory[playerAddress].totalWins += 1;
         }
@@ -219,40 +227,44 @@ contract CoinFlip100 is Ownable, usingProvable{
                     playerHistory[msg.sender].lastWinAmount );
     }
 
+    function realContractBalance() public view returns(uint) {
+        return address(this).balance;
+    }
+
     function getContractBalance() public view returns (uint) {
       return _contractBalance_;
     }
-
 
     function get_totalAllPlayerBalance_() public view returns (uint) {
       return _totalAllPlayerBalance_;
     }
 
-    function contractPlayableFund() public view returns(uint) {
+    function get_ownerBalance() public view returns(uint) {
       if (_contractBalance_ == 0) {
         return 0;
       }
       else {
-        return _contractBalance_ - _totalAllPlayerBalance_;
+        return _contractBalance_ - _totalAllPlayerBalance_ - _lockedInBets_;
       }
     }
 
     function playerPlayableFund() public view returns(uint) {
-        uint contractPlayable = contractPlayableFund();
-        if (playerHistory[msg.sender].totalBalance < contractPlayable) {
+        uint contractPlayable = get_ownerBalance();
+        if (getWinAmountWei(playerHistory[msg.sender].totalBalance) < contractPlayable) {
             return playerHistory[msg.sender].totalBalance;
         }
         else {
-            return contractPlayable;
+            return get_betAbleAmountWei(contractPlayable);
         }
     }
 
     function verifyBet(uint[] memory betNumbers, uint[] memory betAmount_wei) private view returns(bool) {
+        // verify that new bet is valid
         require (betNumbers.length == betAmount_wei.length," ERROR bet aray") ;
         uint sumBetAmount = 0;
 
         for (uint x = 0; x<betNumbers.length; x++) {
-
+            require(((betNumbers[x] >=  BET_RANGE_MIN) && (betNumbers[x] <=  BET_RANGE_MAX)), "Bet number out of range");
             require(betAmount_wei[x] >=  BET_MIN_AMOUNT_WEI, "Bet amount less than min amount");
             sumBetAmount += betAmount_wei[x];
         }
@@ -260,23 +272,48 @@ contract CoinFlip100 is Ownable, usingProvable{
         return true;
     }
 
+    function lockOutAmount(uint BetNumber, uint BetAmount) private {
+        betAmountForNumber [ BetNumber ].confirmed -= BetAmount;
+        if (_maxBetedNumber_ == BetNumber) {
+            // Should find new highest bet
+            uint maxBet = 0;
+            for (uint8 x=0; x<100; x++) {
+                if (maxBet < betAmountForNumber[x].confirmed) {
+                    maxBet = betAmountForNumber[x].confirmed;
+                    _maxBetedNumber_ = x;
+
+                }
+            }
+            _lockedInBets_ = getWinAmountWei(betAmountForNumber [ _maxBetedNumber_ ].confirmed );
+        }
+    }
+
+    function lockInAmount(uint newBetNumber, uint newBetAmount) private {
+        betAmountForNumber [ newBetNumber ].confirmed += newBetAmount;
+        if (getWinAmountWei(betAmountForNumber [ newBetNumber ].confirmed )> _lockedInBets_) {
+            _lockedInBets_ = getWinAmountWei(betAmountForNumber [ newBetNumber ].confirmed );
+            _maxBetedNumber_ = newBetNumber;
+        }
+    }
+
     function updateActiveBet(uint[] memory newBetNumbers, uint[] memory newBetAmount_wei) private {
         //append new bets with current Betlist
         for (uint x=0; x<newBetNumbers.length; x++) {
             activeBet[msg.sender].betNumbers.push(newBetNumbers[x]);
             activeBet[msg.sender].betAmount.push(newBetAmount_wei[x]);
+
+            lockInAmount(newBetNumbers[x], newBetAmount_wei[x]);
         }
     }
 
 
-    function createMyBet(uint[] memory betNumbers, uint[] memory betAmount_chip) public returns (bool){
+
+    function createMyBet(uint[] memory betNumbers, uint[] memory betAmount_chip) public returns (bool) {
 
         //money amount received from frontEnd is in Chips;
         //Should conver all chips to Wei
 
-        require(activeBet[msg.sender].waitingId == 0, ".. Please Wait for result of last bet..");
-
-        require(validPlayerBalance(), "Not valid Player Balance");
+        require(activeBet[msg.sender].waitingResult ==  false, ".. Please Wait for result of last bet..");
 
         uint[] memory betAmount = chip2Wei_ar(betAmount_chip);
 
@@ -312,17 +349,18 @@ contract CoinFlip100 is Ownable, usingProvable{
     }
 
 
+    function get_betAbleAmountWei(uint podWei) public view returns(uint) {
+        return (podWei/BET_WIN_RATE)*100;
+    }
+
     function getWinAmountWei(uint winWei) public view returns(uint) {
         return (winWei*BET_WIN_RATE)/100;
     }
 
     function playerTossCoin() public payable returns(bytes32 waitingId){
 
-        //require(activeBet[msg.sender].waitingResult == false, "Already called random Number, please wait for result..");
-        //require(activeBet[msg.sender].waitingId == 0, "Already has result..");
-        //require(activeBet[msg.sender].paidOut == true, "..Last bet not solved..");
-        //require(validPlayerBalance(), "playerTossCoin: Not valid Player Balance");
-        //require(activeBet[msg.sender].betNumbers.length > 0,"playerTossCoin: No bet placed, plase place the bet!");
+        require(activeBet[msg.sender].waitingResult == false, "Already called random Number, please wait for result..");
+        require(activeBet[msg.sender].betNumbers.length > 0,"playerTossCoin: No bet placed, plase place the bet!");
         activeBet[msg.sender].waitingResult = true;
         activeBet[msg.sender].paidOut = false;
 
@@ -342,56 +380,63 @@ contract CoinFlip100 is Ownable, usingProvable{
         return waitingId;
     }
 
+    function payOutCheckRequest(address playerAddress) public {
+        if (activeBet[playerAddress].waitingResult) {
+            if (activeBet[playerAddress].paidOut == false) {
+                    payOut(activeBet[playerAddress].waitingId ,activeBet[playerAddress].lastResult); //, activeBet[playerAddress].proof)
+                } else {
+                    emit notice("Allready paid", playerHistory[playerAddress].lastWinAmount);
+                }
+        } else {
+            emit notice("No New BET yet, PLEASE SUBMITE BET AND HIT FLIP..", 0);
+        }
+    }
 
-    function payOut(bytes32 _queryId, uint result, bytes memory _proof)
+    function payOut(bytes32 _queryId, uint result) //, bytes memory _proof)
         private returns(address, uint, uint) {
         address playerAddress = playersQuery[_queryId];
-        //require(activeBet[playerAddress].waitingId == _queryId, " query Id and Address not matched !");
-        //require(activeBet[playerAddress].paidOut == false, "..duplicate pay out..");
-        //require(result >= BET_RANGE_MIN && result <= BET_RANGE_MAX, "playerTossCoin: Random out of range");
 
-        if (activeBet[playerAddress].paidOut) {
-            return (playerAddress,playerHistory[playerAddress].lastWinAmount, activeBet[playerAddress].lastResult);
-        }
-        else {
-            activeBet[playerAddress].lastResult = result;
-            activeBet[playerAddress].waitingResult = false;
-            activeBet[playerAddress].paidOut = true;
+        activeBet[playerAddress].lastResult = result;
+        activeBet[playerAddress].waitingResult = false;
+        activeBet[playerAddress].paidOut = true;
 
-            uint winAmount_wei = 0;
+        uint winAmount_wei = 0;
 
-            for (uint x=0; x<activeBet[playerAddress].betNumbers.length; x++) {
+        for (uint x=0; x<activeBet[playerAddress].betNumbers.length; x++) {
+
+                //reduce bet amout from player for a number in big table
+                lockOutAmount(activeBet[playerAddress].betNumbers[x], activeBet[playerAddress].betAmount[x]);
+
                 if (activeBet[playerAddress].betNumbers[x] == result) {
                     winAmount_wei += getWinAmountWei(activeBet[playerAddress].betAmount[x]);
                 }
             }
 
-            resetPlayerBetList(playerAddress);
-            myWinBalance(playerAddress,winAmount_wei);
-            updatePlayerBalance(playerAddress);
+        resetPlayerBetList(playerAddress);
+        myWinBalance(playerAddress,winAmount_wei);
+        updatePlayerBalance(playerAddress);
 
-            emit betFinished(playerAddress, winAmount_wei, result);
-            return (playerAddress,winAmount_wei, result);
-        }
-
+        emit betFinished(playerAddress, winAmount_wei, result);
+        return (playerAddress,winAmount_wei, result);
     }
 
+
     function ownerWithdrawAll() public onlyOwner returns(uint) {
+       //Should add emergency Withdrawall
+       //playerWithdrawAll(); //If owner plays, Withdraw as a player first
 
-       playerWithdrawAll(); //Withdraw as a player first
-
-       uint toTransfer = getContractBalance();
+       uint toTransfer = realContractBalance() - _totalAllPlayerBalance_ ; // - _lockedInBets_; Should add later..
 
        //Should cancel all bets before withdrawn
        //Should return all players ballances before withdrawn
        _totalAllPlayerBalance_ = 0;
-       _contractBalance_ = 0;
+       _contractBalance_ -= toTransfer;
 
        msg.sender.transfer(toTransfer);
        return toTransfer;
     }
 
-    function playerWithdrawAll() public  returns(uint) {
+    function playerWithdrawAll() public returns(uint) {
 
         updatePlayerBalance(msg.sender);
 
@@ -399,16 +444,16 @@ contract CoinFlip100 is Ownable, usingProvable{
 
         require(validPlayerBalance(), "Invalid balance check");
 
-        require(activeBet[msg.sender].waitingId == 0, "Waiting for bet result..");
-
-        require(activeBet[msg.sender].betNumbers.length == 0, "Bet can not be cancelled, Click Flip Button..");
+        require(activeBet[msg.sender].waitingResult == false, "Waiting for bet result..");
 
         uint toTransfer = playerHistory[msg.sender].totalBalance;
 
         playerHistory[msg.sender].totalWithdrawn += toTransfer;
 
-        _contractBalance_ -= toTransfer;
+        resetPlayerBetList(msg.sender);
 
+        _contractBalance_ -= toTransfer;
+        
         updatePlayerBalance(msg.sender);
 
         assert(playerHistory[msg.sender].totalBalance == 0);

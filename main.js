@@ -12,7 +12,7 @@ var BET_WIN_RATE = 190
 
 var CONTRACT_INSTANCE;
 var ACTIVE_ADDRESS;
-var CONTRACT_ADDRESS = "0xaf9711e7a05d40db4ac1d5160e6ed87678778265";
+var CONTRACT_ADDRESS = "0x3fccba31735f047ff3eba443cab828627da39b6a";
 var OWNER_ADDRESS = "";
 var BET_LIST_NUMBERS = [];
 var BET_LIST_AMOUNTS = []; //Amount Eth betted for 0 and 1
@@ -34,7 +34,7 @@ $(document).ready(function() {
     $("#Submit_button").click(submitBet);
     $("#PlayerWithdrawAll_button").click(PlayerWithdrawAll);
     $("#OwnerWithdrawAll_button").click(OwnerWithdrawAll);
-    $("#CheckResult_button").click(refreshDisplay);
+    $("#CheckResult_button").click(checkResult);
 
     window.ethereum.on('accountsChanged', async function(accounts) {
         console.log("Account changed")
@@ -42,11 +42,28 @@ $(document).ready(function() {
     });
 });
 
+async function checkResult() {
+  console.log("Sending check result request...")
+  await CONTRACT_INSTANCE.methods.payOutCheckRequest(ACTIVE_ADDRESS)
+      .send({gas:1000000, from: ACTIVE_ADDRESS})
+      .on('transactionHash', function(hash){
+        console.log("tx hash :",hash);
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+          console.log("confirmation Number:",confirmationNumber);
+      })
+      .on('receipt', function(receipt){
+        console.log("receipt: ",receipt);
+        refreshDisplay();
+      })
+}
+
 
 function cancelBet() {
     BET_LIST_NUMBERS = []
     BET_LIST_AMOUNTS = []
-    refreshDisplay()
+    console.log("BETTING_LOCKED ",BETTING_LOCKED)
+    refreshLocalBetList()
 }
 
 function validBetNumber(_num) {
@@ -136,6 +153,7 @@ async function OwnerWithdrawAll() {
       })
       .on('confirmation', function(confirmationNumber, receipt){
           console.log("confirmation Number:",confirmationNumber);
+          OWNER_ADDRESS = ACTIVE_ADDRESS; //Only Owner is allowed to WITHDRAW
       })
       .on('receipt', function(receipt){
         console.log("receipt: ",receipt);
@@ -182,10 +200,10 @@ async function ownerFundUp_eth() {
       })
       .on('confirmation', function(confirmationNumber, receipt){
           console.log("confirmation Number:",confirmationNumber);
+          OWNER_ADDRESS = ACTIVE_ADDRESS; //Only Owner is allowed to fund up
       })
       .on('receipt', function(receipt){
         console.log("receipt: ",receipt);
-        OWNER_ADDRESS = ACTIVE_ADDRESS; //Only Owner is allowed to fund up
         refreshDisplay();
       })
 };
