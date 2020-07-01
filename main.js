@@ -11,6 +11,7 @@ var BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
 var BET_WIN_RATE = 190
 
 var CONTRACT_INSTANCE;
+var _contract_instance;
 var ACTIVE_ADDRESS;
 var CONTRACT_ADDRESS = "0x3fccba31735f047ff3eba443cab828627da39b6a";
 var OWNER_ADDRESS = "";
@@ -21,8 +22,10 @@ var BETTING_LOCKED;
 $(document).ready(function() {
     window.ethereum.enable().then(async function(accounts){
       await getActiveAddress()
-      CONTRACT_INSTANCE = new web3.eth.Contract(window.abi, CONTRACT_ADDRESS , {gas:1000000, from: ACTIVE_ADDRESS});
+      CONTRACT_INSTANCE = await new web3.eth.Contract(window.abi, CONTRACT_ADDRESS , {gas:1000000, from: ACTIVE_ADDRESS});
       console.log("CONTRACT_INSTANCE :",CONTRACT_INSTANCE);
+
+      initEventListeners();
       refreshDisplay();
     });
 
@@ -41,6 +44,41 @@ $(document).ready(function() {
         refreshDisplay();
     });
 });
+
+async function initEventListeners() {
+    latestBlock = await web3.eth.getBlockNumber();
+    console.log("LATEST BLOCK NO :",latestBlock);
+
+    CONTRACT_INSTANCE.events.notice({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("Notice event received: "+event.returnValues[0]+event.returnValues[1].toString())
+          console.log(event.returnValues[0])
+          console.log(event.returnValues[1]) });
+
+    CONTRACT_INSTANCE.events.LogNewProvableQuery({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("LogNewProvableQuery: "+event.returnValues[0])
+          console.log(event.returnValues[0])
+        });
+
+    CONTRACT_INSTANCE.events.betFinished({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("betFinished: "+event.returnValues[0] +event.returnValues[1] +event.returnValues[2])
+          console.log(event.returnValues[0],"|",event.returnValues[1],"|",event.returnValues[2])
+        });
+
+    CONTRACT_INSTANCE.events.generatedRandomNumber({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("generatedRandomNumber: "+event.returnValues[0] +event.returnValues[1] +event.returnValues[2])
+          console.log(event.returnValues[0],"|",event.returnValues[1],"|",event.returnValues[2])
+        });
+
+    CONTRACT_INSTANCE.events.newBetCreated({fromBlock:latestBlock})
+      .on('data', event => {
+          alert("newBetCreated: "+event.returnValues[0] +event.returnValues[1] +event.returnValues[2])
+          console.log(event.returnValues[0],"|",event.returnValues[1],"|",event.returnValues[2])
+        });
+}
 
 async function checkResult() {
   console.log("Sending check result request...")
