@@ -1,14 +1,27 @@
 const CoinFlip100 = artifacts.require("CoinFlip100");
 const truffleAssert = require("truffle-assertions");
 
-const EthToChip = 1000;  //This var should also be declared exactly the same in SOL file
+var CHIP_TO_WEI = 10**15; //1 chips = 1 eth - Can be parametric
+var BET_MIN_AMOUNT_WEI = CHIP_TO_WEI ; //All Amount are in ETH
+var BET_WIN_RATE = 7000; //Win rate = 70x with 2 decimals
+
+var acc0 = "0x879f4528aC8718c1A4400b722114943A099C260f"
+var acc1 = "0x001618D1bd09F71cd223afA603978127961CD5fB"
 
 function chip2wei_ar(ar) {
   wei_ar = []
   for (x=0; x<ar.length; x++) {
-    wei_ar.push((ar[x]/EthToChip)*(10**18));
+    wei_ar.push(ar[x]*CHIP_TO_WEI);
   }
   return wei_ar
+}
+
+function chip2wei(chip) {
+  return (chip*CHIP_TO_WEI);
+}
+
+function wei2Chip(wei) {
+  return (wei/CHIP_TO_WEI);
 }
 
 function theSameArray(ar1,ar2) {
@@ -24,6 +37,42 @@ function theSameArray(ar1,ar2) {
 }
 
 
+async function contractBalanceVarCheck() {
+    InstanceContractBalance = parseInt( await web3.eth.getBalance(instance.address))
+    readVar_contractbalance = parseInt(await instance.readVar_contractBalance_()) //balance is a function of CoinFlip100 contract
+    console.log("contract Balance on Chain = ",InstanceContractBalance);
+    console.log("contract Balance in memory = ",readVar_contractbalance);
+    if (InstanceContractBalance != readVar_contractbalance) {
+      compare = false;
+    } else {compare = true};
+    return {correct: compare, amount_wei:InstanceContractBalance, amount_chip: wei2Chip(InstanceContractBalance)};
+  }
+
+
+async function withdrawAllOfOwner(accAddress) {
+    console.log("Withdraw to account 0...");
+    contractBalance_before = parseInt(await web3.eth.getBalance(instance.address))
+    userBalance_before = parseInt( await web3.eth.getBalance(accAddress))
+    if (accountId == 0) {
+      await truffleAssert.passes(instance.withdrawAll({from: accAddress}),"owner withdraw Not passed")
+    } else {
+      await truffleAssert.fails(instance.withdrawAll({from: accAddress}),"player withdraw Not stoped")
+    }
+    contractBalance_after = parseInt(await web3.eth.getBalance(instance.address))
+    userBalance_after = parseInt( await web3.eth.getBalance(accAddress))
+    if (accountId == 0) {
+      if (contractBalance_before > contractBalance_after) {
+        return true
+      } else {return false}
+    }
+    else{
+      if (contractBalance_before > contractBalance_after) {
+        return false
+      } else {return true}
+    }
+  }
+
+
 contract("CoinFlip100", async function(accounts){
 
   var instance;
@@ -32,47 +81,52 @@ contract("CoinFlip100", async function(accounts){
   //afterEach(async function() {...})
   //after(async function() {...})
 
+
+  //  CHECK NO #1
   it("should accept Owner top Up", async function(){
-    instance = await CoinFlip100.new();
 
-    ownerBalanceStart = parseInt( await web3.eth.getBalance(accounts[0]))
-    player1_BalanceStart = parseInt( await web3.eth.getBalance(accounts[1]))
-    player2_BalanceStart = parseInt( await web3.eth.getBalance(accounts[2]))
-    totalBalance_start= ownerBalanceStart+player1_BalanceStart+player2_BalanceStart
+      instance = await CoinFlip100.new();
+      contractBalance_afterWithdraw = parseInt(await web3.eth.getBalance(instance.address))
+  });
+  /*
+  
+      instanceBalance_afterWithdraw = parseInt(await instance.balance())
+      console.log("contract Balance after withdraw = ",contractBalance_afterWithdraw);
+      console.log("instance Balance after withdraw = ",instanceBalance_afterWithdraw);
 
+      ownerBalance_1a = parseInt( await web3.eth.getBalance(acc0))
+      player1Balance_1a = parseInt( await web3.eth.getBalance(acc1))
 
-    console.log("CoinFlip100.address = ", CoinFlip100.address)
-    console.log("Instance.address = ", instance.address)
-    let CoinFlip100Balance_before =parseInt( await web3.eth.getBalance(CoinFlip100.address))
-    let InstanceContractBalance_before =parseInt( await web3.eth.getBalance(instance.address))
-    let instanceBalance_before = parseInt(await instance.getContractBalance()) //balance is a function of CoinFlip100 contract
+      contractBalance_1a = contractBalanceVarCheck();
+      assert(contractBalance_1a.correct , "Balance of instance and balance of Network address not match")
+      total_owner_player_balance_1a = ownerBalance_1a + player1Balance_1a
 
-    console.log("CoinFlip100 Balance at start = ",CoinFlip100Balance_before);
-    console.log("contract Balance at start = ",InstanceContractBalance_before);
-    console.log("instance Balance at start = ",instanceBalance_before);
+      //console.log("CoinFlip100.address = ", CoinFlip100.address)
+      //console.log("Instance.address = ", instance.address)
 
-    assert(InstanceContractBalance_before == instanceBalance_before, "Balance of instance and balance of Network address not match")
+      ownerFundUp_chip_1a = 140 //1000 ships = 1 eth
+      console.log("Creating Fund Up ..",ownerFundUp_chip,"chip")
 
-    ownerFundUp_chip = 1000 //1000 ships = 1 eth
-    ownerFundUp_eth = ownerFundUp_chip / EthToChip
-    console.log("Creating Fund Up ..",ownerFundUp_chip,"chip")
+      ownerFundUp_wei = chip2Wei(ownerFundUp_chip_1a);
+      await instance.ownerFundUp_chip(ownerFundUp_chip,{value: ownerFundUp_wei.toString(), from: acc0});
 
-    ownerFundUp_wei = web3.utils.toWei(ownerFundUp_eth.toString(),"ether")
-    await instance.ownerFundUp_chip(ownerFundUp_chip,{value: ownerFundUp_wei.toString(), from: accounts[0]});
+      contactBalance_1b = contractBalanceVarCheck();
+      assert(contactBalance_1b.correct, "Balance of instance and balance of Network address not match");
+      assert(contactBalance_1b.amount_chip == ownerFundUp_chip_1a, "Balance of instance not correct")
 
-    let CoinFlip100Balance_after = parseInt( await web3.eth.getBalance(CoinFlip100.address))
-    let InstanceContractBalance_after = parseInt(await web3.eth.getBalance(instance.address))
-    let instanceBalance_after = parseInt(await instance.getContractBalance())
-
-    console.log("CoinFlip100 Balance after top UP = ",CoinFlip100Balance_after);
-    console.log("contract Balance after top UP = ",InstanceContractBalance_after);
-    console.log("instance Balance after top UP = ",instanceBalance_after);
-
-    assert(InstanceContractBalance_after == instanceBalance_after, "Balance of instance and balance of Network address not match");
-    assert(InstanceContractBalance_after > InstanceContractBalance_before, "Balance of instance not insreased")
+      console.log("Contract Balance after funding:",ownerFundUp_chip_1a,"IS:",contactBalance_1b.amount_chip );
   });
 
+  //  CHECK NO #...
+  it("should accept Owner withdraw", async function(){
 
+      test_W1 = withdrawAllOfOwner(acc1);
+      assert(test_W1, " test withdraw from account 1 not ok ");
+      test_W0 = withdrawAllOfOwner(acc0);
+      assert(test_W0, " test withdraw from account 0 not ok ");
+  });
+
+/*
     it("should accept Player 1 top Up", async function(){
 
       console.log("CoinFlip100.address = ", CoinFlip100.address)
@@ -381,7 +435,7 @@ contract("CoinFlip100", async function(accounts){
   it("Should allow Owner to withdraw ", async function() {
 
     await truffleAssert.passes(
-      instance.ownerWithdrawAll({gas:1000000, from: accounts[0]}));
+      instance.ownerWithdrawAll({gas:1000000, from: acc0}));
 
     CoinFlip100Balance_after = parseInt( await web3.eth.getBalance(CoinFlip100.address))
     InstanceContractBalance_after = parseInt(await web3.eth.getBalance(instance.address))
@@ -402,7 +456,7 @@ contract("CoinFlip100", async function(accounts){
     console.log("Player 1 balance at start:")
     console.log("Player 2 balance at start:")
 
-    ownerBalanceEnd = parseInt( await web3.eth.getBalance(accounts[0]))
+    ownerBalanceEnd = parseInt( await web3.eth.getBalance(acc0))
     player1_BalanceEnd = parseInt( await web3.eth.getBalance(accounts[1]))
     player2_BalanceEnd = parseInt( await web3.eth.getBalance(accounts[2]))
     totalBalance_End= ownerBalanceEnd+player1_BalanceEnd+player2_BalanceEnd
@@ -436,19 +490,19 @@ contract("CoinFlip100", async function(accounts){
 
 /*
   it("should payOut and reset",async function() {
-    playerDetails = await instance.playerReport(accounts[0]);
+    playerDetails = await instance.playerReport(acc0);
     console.log( "playerDetails", playerDetails)
     CoinFlip100Balance_before =parseInt( await web3.eth.getBalance(CoinFlip100.address))
     InstanceContractBalance_before =parseInt( await web3.eth.getBalance(instance.address))
     instanceBalance_before = parseInt(await instance.balance()) //balance is a function of CoinFlip100 contract
-    playerBalance = parseInt( await web3.eth.getBalance(accounts[0]))
+    playerBalance = parseInt( await web3.eth.getBalance(acc0))
 
     console.log("CoinFlip100 Balance before PayOut = ",CoinFlip100Balance_before);
     console.log("contract Balance before PayOut = ",InstanceContractBalance_before);
     console.log("instance Balance before PayOut = ",instanceBalance_before);
     console.log("Player Balance = ", playerBalance);
 
-    betted = await instance.getMyBet({from: accounts[0]});
+    betted = await instance.getMyBet({from: acc0});
     console.log("Before Pay Out: Betted for :",betted[0] );
     console.log("Before Pay Out: Betted Amount :",betted[1]);
 
@@ -457,14 +511,14 @@ contract("CoinFlip100", async function(accounts){
     CoinFlip100Balance_after = parseInt( await web3.eth.getBalance(CoinFlip100.address))
     InstanceContractBalance_after = parseInt( await web3.eth.getBalance(instance.address))
     instanceBalance_after = parseInt(await instance.balance()) //balance is a function of CoinFlip100 contract
-    playerBalance = parseInt( await web3.eth.getBalance(accounts[0]))
+    playerBalance = parseInt( await web3.eth.getBalance(acc0))
 
     console.log("CoinFlip100 Balance after PayOut = ",CoinFlip100Balance_after);
     console.log("contract Balance after PayOut = ",InstanceContractBalance_after);
     console.log("instance Balance after PayOut = ",instanceBalance_after);
     console.log("Player Balance = ", playerBalance);
 
-    betted = await instance.getMyBet({from: accounts[0]});
+    betted = await instance.getMyBet({from: acc0});
     console.log("After Pay Out: Betted for :",betted[0] );
     console.log("After Pay Out: Betted Amount :",betted[1]);
     assert(betted[0] == 0);
@@ -512,7 +566,7 @@ contract("CoinFlip100", async function(accounts){
       "Bob", 100, 190,
       {value: web3.utils.toWei("1","ether"), from: accounts[1]});
     await truffleAssert.passes(
-      instance.deletePerson(accounts[0], {from: accounts[0]})
+      instance.deletePerson(acc0, {from: acc0})
     );
   });
     //web3.eth.getBalance(address)
@@ -555,11 +609,11 @@ contract("CoinFlip100", async function(accounts){
     console.log("contract Balance after withdraw = ",contractBalance_afterWithdraw);
     console.log("instance Balance after withdraw = ",instanceBalance_afterWithdraw);
 
-    let acc0_balance_before = parseInt(await web3.eth.getBalance(accounts[0]))
+    let acc0_balance_before = parseInt(await web3.eth.getBalance(acc0))
 
     console.log("Withdraw to account 0...")
     await truffleAssert.passes(
-      instance.withdrawAll({from: accounts[0]})
+      instance.withdrawAll({from: acc0})
     );
 
     contractBalance_afterWithdraw = parseInt(await web3.eth.getBalance(instance.address))
@@ -570,7 +624,7 @@ contract("CoinFlip100", async function(accounts){
     assert(contractBalance_afterWithdraw == instanceBalance_afterWithdraw, "Balance of instance and balance of Network address not match")
     assert(instanceBalance_afterWithdraw == web3.utils.toWei("0","ether"), "Balance not Zero")
 
-    let acc0_balance_after = parseInt(await web3.eth.getBalance(accounts[0]))
+    let acc0_balance_after = parseInt(await web3.eth.getBalance(acc0))
     console.log("Account 0 Balance before withdrawall = ",acc0_balance_before);
     console.log("Account 0 Balance after withdrawall = ",acc0_balance_after);
 
