@@ -13,8 +13,9 @@
 // Newbets allowed after 19h:00
 
 import "./Ownable.sol";
-import "./provableAPI_0.4.25_simplified.sol";
-pragma solidity 0.4.26;
+//import "./provableAPI_0.4.25_simplified.sol";
+import "./provableAPI_0.5.sol";
+pragma solidity 0.5.12;
 
 contract CoinFlip100 is Ownable, usingProvable{
 
