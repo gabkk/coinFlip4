@@ -13,7 +13,6 @@
 // Newbets allowed after 19h:00
 
 import "./Ownable.sol";
-//import "./provableAPI_0.4.25_simplified.sol";
 import "./provableAPI_0.5.sol";
 pragma solidity 0.5.12;
 
@@ -96,7 +95,7 @@ contract CoinFlip100 is Ownable, usingProvable{
         initNewRound();
     }
 
-    function __callback(bytes32 _queryId, string _result, bytes _proof) public {
+    function __callback(bytes32 _queryId, string memory _result, bytes memory _proof) public {
 
         require(msg.sender == provable_cbAddress());
         //if (
